@@ -25,16 +25,25 @@
         .val { font-weight: bold; margin: 0 6px; color: #fff; }
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         
-        #instruction { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; text-align: center; line-height: 1.4; max-width: 90%; }
+        #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 10px; line-height: 1.5; }
         
+        /* 新增：右下角精準縮放面板 */
+        #controlPanel { display: none; position: absolute; right: 20px; bottom: 20px; background: rgba(0,0,0,0.75); padding: 12px; border-radius: 12px; z-index: 10; flex-direction: column; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .ctrl-group span { color: #ddd; font-size: 0.9rem; width: 45px; text-align: left; }
+        .ctrl-group button { background: #444; color: white; border: 1px solid #555; padding: 5px 15px; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.2s; touch-action: manipulation; }
+        .ctrl-group button:hover { background: #666; border-color: #888; }
+        .ctrl-group button:active { background: #333; }
+
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; }
 
-        /* 手機版專屬排版調整 */
         @media (max-width: 600px) {
             #logo { top: 15px; left: 15px; font-size: 1.2rem; }
             #logo img { height: 24px !important; }
             #infoBar { top: 65px; font-size: 1.1rem; padding: 8px 16px; }
-            #instruction { bottom: 30px; font-size: 0.75rem; width: 85%; }
+            #instruction { display: none !important; /* 手機空間小，隱藏文字說明 */ }
+            #controlPanel { right: 15px; bottom: 30px; padding: 10px; gap: 8px; }
+            .ctrl-group button { padding: 4px 12px; font-size: 1rem; }
         }
     </style>
 </head>
@@ -57,8 +66,26 @@
     </div>
     
     <div id="instruction">
-        <b>電腦</b>：滾輪縮圖 ｜ Shift+滾輪縮尺標 ｜ Ctrl+滾輪同步<br>
-        <b>手機/平板</b>：雙指開合縮放 ｜ 單指拖曳平移與微調
+        <b>滑鼠滾輪</b>：縮圖<br><b>Shift+滾輪</b>：縮尺標<br><b>Ctrl+滾輪</b>：同步
+    </div>
+
+    <!-- 新增：右下角精準縮放按鈕 -->
+    <div id="controlPanel">
+        <div class="ctrl-group">
+            <span>圖(Img)</span>
+            <button onclick="zoomImg(1.05)">+</button>
+            <button onclick="zoomImg(0.95)">-</button>
+        </div>
+        <div class="ctrl-group">
+            <span>標(Mkr)</span>
+            <button onclick="zoomMkr(1.05)">+</button>
+            <button onclick="zoomMkr(0.95)">-</button>
+        </div>
+        <div class="ctrl-group">
+            <span>同(All)</span>
+            <button onclick="zoomAll(1.05)">+</button>
+            <button onclick="zoomAll(0.95)">-</button>
+        </div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -69,6 +96,7 @@
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
         const instruction = document.getElementById('instruction');
+        const controlPanel = document.getElementById('controlPanel');
         const ctx = canvas.getContext('2d');
         let img = new Image();
         
@@ -103,6 +131,7 @@
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
                     instruction.style.display = 'block';
+                    controlPanel.style.display = 'flex'; // 顯示縮放面板
                     
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
@@ -189,6 +218,43 @@
             return { x: avgX / 8, y: avgY / 8 };
         }
 
+        /* --- 新增：按鈕縮放功能邏輯 --- */
+        function zoomImg(zoomFactor) {
+            let cx = canvas.width / 2;
+            let cy = canvas.height / 2;
+            let wx = (cx - transform.x) / transform.scale;
+            let wy = (cy - transform.y) / transform.scale;
+            transform.scale *= zoomFactor;
+            transform.x = cx - wx * transform.scale;
+            transform.y = cy - wy * transform.scale;
+            draw();
+        }
+
+        function zoomMkr(zoomFactor) {
+            let center = getCenter();
+            for (let key in pts) {
+                pts[key].x = center.x + (pts[key].x - center.x) * zoomFactor;
+                pts[key].y = center.y + (pts[key].y - center.y) * zoomFactor;
+            }
+            draw();
+        }
+
+        function zoomAll(zoomFactor) {
+            let cx = canvas.width / 2;
+            let cy = canvas.height / 2;
+            let wx = (cx - transform.x) / transform.scale;
+            let wy = (cy - transform.y) / transform.scale;
+            transform.scale *= zoomFactor;
+            transform.x = cx - wx * transform.scale;
+            transform.y = cy - wy * transform.scale;
+            for (let key in pts) {
+                pts[key].x = cx + (pts[key].x - cx) * zoomFactor;
+                pts[key].y = cy + (pts[key].y - cy) * zoomFactor;
+            }
+            draw();
+        }
+        /* ------------------------------ */
+
         function draw() {
             if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
                 canvas.width = window.innerWidth;
@@ -203,20 +269,22 @@
             if(img.src) ctx.drawImage(img, 0, 0);
             ctx.restore();
 
-            ctx.save();
-            ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
-            
-            ctx.strokeStyle = dColor;
-            ctx.beginPath(); ctx.moveTo(pts.d_v1.x, pts.d_v1.y); ctx.lineTo(pts.d_v2.x, pts.d_v2.y); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
-            
-            ctx.strokeStyle = cColor;
-            // 這次是真的 100% 確認改成 pts 了！！
-            ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, pts.c_v2.y); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
-            ctx.restore();
+            // 修正：加上判斷式，只有在拖曳物件 (dragObj 存在) 時才畫出虛線十字
+            if (dragObj && (dragObj.type === 'point' || dragObj.type === 'group')) {
+                ctx.save();
+                ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
+                
+                ctx.strokeStyle = dColor;
+                ctx.beginPath(); ctx.moveTo(pts.d_v1.x, pts.d_v1.y); ctx.lineTo(pts.d_v2.x, pts.d_v2.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
+                
+                ctx.strokeStyle = cColor;
+                ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, pts.c_v2.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
+                ctx.restore();
+            }
 
-            // 確保畫實線橫槓時，不會被虛線設定干擾
+            // 確保畫實線橫槓時，不受虛線設定干擾
             ctx.setLineDash([]);
 
             function drawDash(p, key) {
@@ -238,6 +306,7 @@
                 ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke();
             }
             
+            // 隨時畫出八個小橫槓，確保一直都在
             for (let key in pts) drawDash(pts[key], key);
             
             let center = getCenter();
@@ -316,7 +385,7 @@
             lastMouse = {x: mouseX, y: mouseY};
         });
 
-        window.addEventListener('mouseup', () => { dragObj = null; isDraggingCanvas = false; });
+        window.addEventListener('mouseup', () => { dragObj = null; isDraggingCanvas = false; draw(); });
 
         canvas.addEventListener('touchstart', e => {
             if (e.touches.length === 1) {
@@ -325,17 +394,19 @@
                 let center = getCenter();
                 dragObj = null; isDraggingCanvas = false;
                 
-                if (dist2({x: touch.clientX, y: touch.clientY}, center) < sqr(25)) {
+                // 擴大手機觸控的感應範圍，更好點擊
+                if (dist2({x: touch.clientX, y: touch.clientY}, center) < sqr(30)) {
                     dragObj = { type: 'group', lastX: touch.clientX, lastY: touch.clientY };
                 } else {
                     for (let key in pts) {
-                        if (dist2({x: touch.clientX, y: touch.clientY}, pts[key]) < sqr(30)) {
+                        if (dist2({x: touch.clientX, y: touch.clientY}, pts[key]) < sqr(35)) {
                             dragObj = { type: 'point', pt: pts[key] };
                             break;
                         }
                     }
                 }
                 if (!dragObj) isDraggingCanvas = true;
+                draw(); // 點擊時觸發重繪，讓虛線提早出現
             } else if (e.touches.length === 2) {
                 lastTouchDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
@@ -387,7 +458,7 @@
             }
         }, {passive: false});
 
-        canvas.addEventListener('touchend', () => { dragObj = null; isDraggingCanvas = false; });
+        canvas.addEventListener('touchend', () => { dragObj = null; isDraggingCanvas = false; draw(); });
         window.addEventListener('resize', draw);
     </script>
 </body>
