@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- Web App 專屬設定 (手機加入主畫面用) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CDRatio">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <title>CDRatio - 臨床輔助分析工具</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #111; margin: 0; padding: 0; color: white; height: 100vh; overflow: hidden; justify-content: center; touch-action: none; }
+        
+        #logo { position: absolute; top: 20px; left: 30px; font-size: 1.8rem; font-weight: 900; z-index: 20; user-select: none; pointer-events: none; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); display: flex; align-items: center; }
+        .logo-text { color: #fff; font-weight: 700; margin-left: 10px; }
+        
+        #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; }
+        #fileInput { display: none; }
+        
+        #infoBar { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 10px 20px; border-radius: 30px; font-size: 1.4rem; z-index: 10; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); white-space: nowrap; }
+        .c-color { color: #4cd964; font-weight: bold; } 
+        .d-color { color: #ff3b30; font-weight: bold; } 
+        .val { font-weight: bold; margin: 0 6px; color: #fff; }
+        .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
+        
+        #instruction { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; text-align: center; line-height: 1.4; max-width: 90%; }
+        
+        canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; }
+    </style>
+</head>
+<body>
+
+    <div id="logo">
+        <!-- 畫面左上角的自訂 Logo 圖片 -->
+        <img src="logo.png" alt="Logo" style="height: 35px; border-radius: 6px;"> 
+        <span class="logo-text">CDRatio</span>
+    </div>
+
+    <div id="dropZone" onclick="document.getElementById('fileInput').click()">
+        點擊選擇圖片，或將眼底圖拖曳至此
+        <input type="file" id="fileInput" accept="image/*" />
+    </div>
+
+    <div id="infoBar">
+        <span class="c-color">C</span> / <span class="d-color">D</span> Ratio 
+        <span class="label">V:</span><span id="vRatio" class="val">0.00</span>
+        <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
+    </div>
+    
+    <div id="instruction">
+        <b>電腦</b>：滾輪縮圖 ｜ Shift+滾輪縮尺標 ｜ Ctrl+滾輪同步<br>
+        <b>手機/平板</b>：雙指開合縮放 ｜ 單指拖曳平移與微調
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('canvas');
+        const infoBar = document.getElementById('infoBar');
+        const instruction = document.getElementById('instruction');
+        const ctx = canvas.getContext('2d');
+        let img = new Image();
+        
+        const cColor = '#4cd964'; 
+        const dColor = '#ff3b30'; 
+
+        let pts = {};
+        let transform = { scale: 1, x: 0, y: 0 };
+        
+        let dragObj = null; 
+        let isDraggingCanvas = false;
+        let lastMouse = {x: 0, y: 0};
+        let lastTouchDist = 0;
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) handleImage(e.target.files[0]);
+        });
+
+        dropZone.addEventListener('dragover', (e) => e.preventDefault());
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleImage(e.dataTransfer.files[0]);
+        });
+
+        function handleImage(file) {
+            if (!file.type.match('image.*')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                img.onload = () => {
+                    dropZone.style.display = 'none';
+                    canvas.style.display = 'block';
+                    infoBar.style.display = 'block';
+                    instruction.style.display = 'block';
+                    
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    
+                    transform.scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+                    transform.x = (canvas.width - img.width * transform.scale) / 2;
+                    transform.y = (canvas.height - img.height * transform.scale) / 2;
+                    
+                    let cx = canvas.width / 2; let cy = canvas.height / 2;
+                    
+                    let detected = detectBrightCenter(img);
+                    if(detected) {
+                        cx = detected.x * transform.scale + transform.x;
+                        cy = detected.y * transform.scale + transform.y;
+                    }
+
+                    let dRy = canvas.height * 0.16; let dRx = canvas.height * 0.14; 
+                    let cRy = canvas.height * 0.07; let cRx = canvas.height * 0.06; 
+                    
+                    pts = {
+                        d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
+                        c_v1: {x: cx, y: cy - cRy, color: cColor},  c_v2: {x: cx, y: cy + cRy, color: cColor},
+                        d_h1: {x: cx - dRx, y: cy, color: dColor}, d_h2: {x: cx + dRx, y: cy, color: dColor},
+                        c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
+                    };
+                    
+                    draw();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function detectBrightCenter(image) {
+            try {
+                const tempCanvas = document.createElement('canvas');
+                const tCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = 150; tempCanvas.height = 150 * (image.height / image.width);
+                tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
+                const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+                
+                let maxBrightness = 0;
+                let bestX = tempCanvas.width / 2;
+                let bestY = tempCanvas.height / 2;
+                
+                for (let y = 10; y < tempCanvas.height - 10; y += 2) {
+                    for (let x = 10; x < tempCanvas.width - 10; x += 2) {
+                        let idx = (y * tempCanvas.width + x) * 4;
+                        let brightness = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
+                        if (brightness > maxBrightness) {
+                            maxBrightness = brightness;
+                            bestX = x; bestY = y;
+                        }
+                    }
+                }
+                return {
+                    x: bestX * (image.width / tempCanvas.width),
+                    y: bestY * (image.height / tempCanvas.height)
+                };
+            } catch(e) {
+                return null;
+            }
+        }
+
+        function sqr(x) { return x * x; }
+        function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y); }
+
+        function calculateRatio() {
+            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
+            let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
+            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
+            let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
+
+            let vRatio = (discV === 0) ? 0 : (cupV / discV);
+            let hRatio = (discH === 0) ? 0 : (cupH / discH);
+
+            document.getElementById('vRatio').innerText = vRatio.toFixed(2);
+            document.getElementById('hRatio').innerText = hRatio.toFixed(2);
+        }
+
+        function getCenter() {
+            let avgX = 0, avgY = 0;
+            for (let key in pts) { avgX += pts[key].x; avgY += pts[key].y; }
+            return { x: avgX / 8, y: avgY / 8 };
+        }
+
+        function draw() {
+            if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(transform.x, transform.y);
+            ctx.scale(transform.scale, transform.scale);
+            if(img.src) ctx.drawImage(img, 0, 0);
+            ctx.restore();
+
+            if (dragObj) {
+                ctx.save();
+                ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
+                ctx.strokeStyle = dColor;
+                ctx.beginPath(); ctx.moveTo(pts.d_v1.x, pts.d_v1.y); ctx.lineTo(pts.d_v2.x, pts.d_v2.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
+                ctx.strokeStyle = cColor;
+                ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, ctx.c_v2.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
+                ctx.restore();
+            }
+
+            function drawDash(p, key) {
+                let dashLen = 14; 
+                ctx.beginPath();
+                if (key.includes('_v')) {
+                    ctx.moveTo(p.x - dashLen/2, p.y); ctx.lineTo(p.x + dashLen/2, p.y);
+                } else {
+                    ctx.moveTo(p.x, p.y - dashLen/2); ctx.lineTo(p.x, p.y + dashLen/2);
+                }
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.stroke();
+                ctx.beginPath();
+                if (key.includes('_v')) {
+                    ctx.moveTo(p.x - dashLen/2, p.y); ctx.lineTo(p.x + dashLen/2, p.y);
+                } else {
+                    ctx.moveTo(p.x, p.y - dashLen/2); ctx.lineTo(p.x, p.y + dashLen/2);
+                }
+                ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke();
+            }
+            
+            for (let key in pts) drawDash(pts[key], key);
+            
+            let center = getCenter();
+            ctx.beginPath(); ctx.arc(center.x, center.y, 8, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+            calculateRatio();
+        }
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            let zoomFactor = e.deltaY < 0 ? 1.05 : 0.95; 
+            let mouseX = e.clientX; let mouseY = e.clientY;
+
+            if (e.shiftKey) {
+                let center = getCenter();
+                for (let key in pts) {
+                    pts[key].x = center.x + (pts[key].x - center.x) * zoomFactor;
+                    pts[key].y = center.y + (pts[key].y - center.y) * zoomFactor;
+                }
+            } else if (e.ctrlKey || e.metaKey) {
+                let wx = (mouseX - transform.x) / transform.scale;
+                let wy = (mouseY - transform.y) / transform.scale;
+                transform.scale *= zoomFactor;
+                transform.x = mouseX - wx * transform.scale;
+                transform.y = mouseY - wy * transform.scale;
+                for (let key in pts) {
+                    pts[key].x = mouseX + (pts[key].x - mouseX) * zoomFactor;
+                    pts[key].y = mouseY + (pts[key].y - mouseY) * zoomFactor;
+                }
+            } else {
+                let wx = (mouseX - transform.x) / transform.scale;
+                let wy = (mouseY - transform.y) / transform.scale;
+                transform.scale *= zoomFactor;
+                transform.x = mouseX - wx * transform.scale;
+                transform.y = mouseY - wy * transform.scale;
+            }
+            draw();
+        }, {passive: false});
+
+        canvas.addEventListener('mousedown', e => {
+            let mouseX = e.clientX; let mouseY = e.clientY;
+            lastMouse = {x: mouseX, y: mouseY};
+            dragObj = null; isDraggingCanvas = false;
+
+            let center = getCenter();
+            if (dist2({x: mouseX, y: mouseY}, center) < sqr(15)) {
+                dragObj = { type: 'group', lastX: mouseX, lastY: mouseY };
+                return;
+            }
+            for (let key in pts) {
+                if (dist2({x: mouseX, y: mouseY}, pts[key]) < sqr(20)) {
+                    dragObj = { type: 'point', pt: pts[key] };
+                    return;
+                }
+            }
+            isDraggingCanvas = true;
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            let mouseX = e.clientX; let mouseY = e.clientY;
+            if (dragObj) {
+                if (dragObj.type === 'group') {
+                    let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                } else if (dragObj.type === 'point') {
+                    dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                }
+                draw();
+            } else if (isDraggingCanvas) {
+                transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y);
+                draw();
+            }
+            lastMouse = {x: mouseX, y: mouseY};
+        });
+
+        window.addEventListener('mouseup', () => { dragObj = null; isDraggingCanvas = false; });
+
+        canvas.addEventListener('touchstart', e => {
+            if (e.touches.length === 1) {
+                let touch = e.touches[0];
+                lastMouse = { x: touch.clientX, y: touch.clientY };
+                let center = getCenter();
+                dragObj = null; isDraggingCanvas = false;
+                
+                if (dist2({x: touch.clientX, y: touch.clientY}, center) < sqr(25)) {
+                    dragObj = { type: 'group', lastX: touch.clientX, lastY: touch.clientY };
+                } else {
+                    for (let key in pts) {
+                        if (dist2({x: touch.clientX, y: touch.clientY}, pts[key]) < sqr(30)) {
+                            dragObj = { type: 'point', pt: pts[key] };
+                            break;
+                        }
+                    }
+                }
+                if (!dragObj) isDraggingCanvas = true;
+            } else if (e.touches.length === 2) {
+                lastTouchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (e.touches.length === 1 && lastMouse) {
+                let touch = e.touches[0];
+                let mouseX = touch.clientX; let mouseY = touch.clientY;
+                if (dragObj) {
+                    if (dragObj.type === 'group') {
+                        let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                        dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                    } else if (dragObj.type === 'point') {
+                        dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                    }
+                    draw();
+                } else if (isDraggingCanvas) {
+                    transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y);
+                    draw();
+                }
+                lastMouse = { x: mouseX, y: mouseY };
+            } else if (e.touches.length === 2) {
+                let dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                let zoomFactor = dist / lastTouchDist;
+                let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                
+                let wx = (centerX - transform.x) / transform.scale;
+                let wy = (centerY - transform.y) / transform.scale;
+                transform.scale *= zoomFactor;
+                transform.x = centerX - wx * transform.scale;
+                transform.y = centerY - wy * transform.scale;
+                
+                for (let key in pts) {
+                    pts[key].x = centerX + (pts[key].x - centerX) * zoomFactor;
+                    pts[key].y = centerY + (pts[key].y - centerY) * zoomFactor;
+                }
+                lastTouchDist = dist;
+                draw();
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('touchend', () => { dragObj = null; isDraggingCanvas = false; });
+        window.addEventListener('resize', draw);
+    </script>
+</body>
+</html>
