@@ -13,8 +13,7 @@
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #111; margin: 0; padding: 0; color: white; height: 100vh; overflow: hidden; justify-content: center; touch-action: none; }
         
-        #logo { position: absolute; top: 20px; left: 30px; font-size: 1.8rem; font-weight: 900; z-index: 20; user-select: none; pointer-events: none; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); display: flex; align-items: center; }
-        .logo-text { color: #fff; font-weight: 700; margin-left: 10px; }
+        #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
         
         #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; }
         #fileInput { display: none; }
@@ -27,31 +26,38 @@
         
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 10px; line-height: 1.5; }
         
-        /* 新增：右下角精準縮放面板 */
-        #controlPanel { display: none; position: absolute; right: 20px; bottom: 20px; background: rgba(0,0,0,0.75); padding: 12px; border-radius: 12px; z-index: 10; flex-direction: column; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .ctrl-group span { color: #ddd; font-size: 0.9rem; width: 45px; text-align: left; }
-        .ctrl-group button { background: #444; color: white; border: 1px solid #555; padding: 5px 15px; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.2s; touch-action: manipulation; }
-        .ctrl-group button:hover { background: #666; border-color: #888; }
-        .ctrl-group button:active { background: #333; }
+        /* 拉桿面板樣式 */
+        #controlPanel { display: none; position: absolute; right: 20px; bottom: 20px; background: rgba(0,0,0,0.75); padding: 15px 20px; border-radius: 12px; z-index: 10; flex-direction: column; gap: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
+        .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; }
+        
+        /* 自訂美化拉桿 (Slider) */
+        input[type=range] { -webkit-appearance: none; width: 130px; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #555; border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #4cd964; cursor: pointer; margin-top: -6px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: 0.1s; }
+        input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); background: #5df076; }
+        
+        /* 針對 Firefox 的拉桿支援 */
+        input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: #555; border-radius: 3px; }
+        input[type=range]::-moz-range-thumb { height: 18px; width: 18px; border-radius: 50%; background: #4cd964; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; }
 
         @media (max-width: 600px) {
-            #logo { top: 15px; left: 15px; font-size: 1.2rem; }
-            #logo img { height: 24px !important; }
+            #logo { top: 15px; left: 15px; }
+            #logo img { height: 28px !important; }
             #infoBar { top: 65px; font-size: 1.1rem; padding: 8px 16px; }
-            #instruction { display: none !important; /* 手機空間小，隱藏文字說明 */ }
-            #controlPanel { right: 15px; bottom: 30px; padding: 10px; gap: 8px; }
-            .ctrl-group button { padding: 4px 12px; font-size: 1rem; }
+            #instruction { display: none !important; }
+            #controlPanel { right: 15px; bottom: 25px; padding: 12px 15px; gap: 14px; }
+            input[type=range] { width: 110px; }
         }
     </style>
 </head>
 <body>
 
     <div id="logo">
-        <img src="logo.png" alt="Logo" style="height: 35px; border-radius: 6px;"> 
-        <span class="logo-text">CDRatio</span>
+        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);"> 
     </div>
 
     <div id="dropZone" onclick="document.getElementById('fileInput').click()">
@@ -69,22 +75,19 @@
         <b>滑鼠滾輪</b>：縮圖<br><b>Shift+滾輪</b>：縮尺標<br><b>Ctrl+滾輪</b>：同步
     </div>
 
-    <!-- 新增：右下角精準縮放按鈕 -->
+    <!-- 升級版：拉桿控制面板 -->
     <div id="controlPanel">
         <div class="ctrl-group">
-            <span>圖(Img)</span>
-            <button onclick="zoomImg(1.05)">+</button>
-            <button onclick="zoomImg(0.95)">-</button>
+            <span>圖片</span>
+            <input type="range" id="sliderImg" min="0.2" max="5.0" step="0.01" value="1.0">
         </div>
         <div class="ctrl-group">
-            <span>標(Mkr)</span>
-            <button onclick="zoomMkr(1.05)">+</button>
-            <button onclick="zoomMkr(0.95)">-</button>
+            <span>標尺</span>
+            <input type="range" id="sliderMkr" min="0.2" max="5.0" step="0.01" value="1.0">
         </div>
         <div class="ctrl-group">
-            <span>同(All)</span>
-            <button onclick="zoomAll(1.05)">+</button>
-            <button onclick="zoomAll(0.95)">-</button>
+            <span>同步</span>
+            <input type="range" id="sliderAll" min="0.2" max="5.0" step="0.01" value="1.0">
         </div>
     </div>
 
@@ -97,6 +100,11 @@
         const infoBar = document.getElementById('infoBar');
         const instruction = document.getElementById('instruction');
         const controlPanel = document.getElementById('controlPanel');
+        
+        const sliderImg = document.getElementById('sliderImg');
+        const sliderMkr = document.getElementById('sliderMkr');
+        const sliderAll = document.getElementById('sliderAll');
+
         const ctx = canvas.getContext('2d');
         let img = new Image();
         
@@ -106,6 +114,11 @@
         let pts = {};
         let transform = { scale: 1, x: 0, y: 0 };
         
+        // 追蹤絕對縮放倍率，確保拉桿與滾輪同步
+        let imgZoom = 1.0;
+        let mkrZoom = 1.0;
+        let allZoom = 1.0;
+
         let dragObj = null; 
         let isDraggingCanvas = false;
         let lastMouse = {x: 0, y: 0};
@@ -123,7 +136,6 @@
 
         function handleImage(file) {
             if (!file.type.match('image.*')) return;
-            
             const reader = new FileReader();
             reader.onload = (event) => {
                 img.onload = () => {
@@ -131,7 +143,7 @@
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
                     instruction.style.display = 'block';
-                    controlPanel.style.display = 'flex'; // 顯示縮放面板
+                    controlPanel.style.display = 'flex';
                     
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
@@ -158,6 +170,10 @@
                         c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
                     };
                     
+                    // 重設拉桿數值
+                    imgZoom = 1.0; mkrZoom = 1.0; allZoom = 1.0;
+                    sliderImg.value = 1.0; sliderMkr.value = 1.0; sliderAll.value = 1.0;
+
                     draw();
                 }
                 img.src = event.target.result;
@@ -173,41 +189,34 @@
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
-                let maxBrightness = 0;
-                let bestX = tempCanvas.width / 2;
-                let bestY = tempCanvas.height / 2;
+                let maxBrightness = 0; let bestX = tempCanvas.width / 2; let bestY = tempCanvas.height / 2;
                 
                 for (let y = 10; y < tempCanvas.height - 10; y += 2) {
                     for (let x = 10; x < tempCanvas.width - 10; x += 2) {
                         let idx = (y * tempCanvas.width + x) * 4;
                         let brightness = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
-                        if (brightness > maxBrightness) {
-                            maxBrightness = brightness;
-                            bestX = x; bestY = y;
-                        }
+                        if (brightness > maxBrightness) { maxBrightness = brightness; bestX = x; bestY = y; }
                     }
                 }
-                return {
-                    x: bestX * (image.width / tempCanvas.width),
-                    y: bestY * (image.height / tempCanvas.height)
-                };
-            } catch(e) {
-                return null;
-            }
+                return { x: bestX * (image.width / tempCanvas.width), y: bestY * (image.height / tempCanvas.height) };
+            } catch(e) { return null; }
         }
 
         function sqr(x) { return x * x; }
         function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y); }
 
+        function distToSegmentSquared(p, v, w) {
+            let l2 = dist2(v, w);
+            if (l2 === 0) return dist2(p, v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+        }
+
         function calculateRatio() {
-            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
-            let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
-            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
-            let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
-
-            let vRatio = (discV === 0) ? 0 : (cupV / discV);
-            let hRatio = (discH === 0) ? 0 : (cupH / discH);
-
+            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
+            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
+            let vRatio = (discV === 0) ? 0 : (cupV / discV); let hRatio = (discH === 0) ? 0 : (cupH / discH);
             document.getElementById('vRatio').innerText = vRatio.toFixed(2);
             document.getElementById('hRatio').innerText = hRatio.toFixed(2);
         }
@@ -218,49 +227,101 @@
             return { x: avgX / 8, y: avgY / 8 };
         }
 
-        /* --- 新增：按鈕縮放功能邏輯 --- */
-        function zoomImg(zoomFactor) {
-            let cx = canvas.width / 2;
-            let cy = canvas.height / 2;
+        /* --- 核心縮放演算法 (共用) --- */
+        function applyZoomImg(factor, cx, cy) {
             let wx = (cx - transform.x) / transform.scale;
             let wy = (cy - transform.y) / transform.scale;
-            transform.scale *= zoomFactor;
+            transform.scale *= factor;
             transform.x = cx - wx * transform.scale;
             transform.y = cy - wy * transform.scale;
-            draw();
         }
 
-        function zoomMkr(zoomFactor) {
+        function applyZoomMkr(factor, cx, cy) {
+            for (let key in pts) {
+                pts[key].x = cx + (pts[key].x - cx) * factor;
+                pts[key].y = cy + (pts[key].y - cy) * factor;
+            }
+        }
+
+        /* --- 拉桿事件監聽 --- */
+        sliderImg.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            let factor = val / imgZoom;
+            applyZoomImg(factor, canvas.width/2, canvas.height/2);
+            imgZoom = val;
+            draw();
+        });
+
+        sliderMkr.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            let factor = val / mkrZoom;
             let center = getCenter();
-            for (let key in pts) {
-                pts[key].x = center.x + (pts[key].x - center.x) * zoomFactor;
-                pts[key].y = center.y + (pts[key].y - center.y) * zoomFactor;
-            }
+            applyZoomMkr(factor, center.x, center.y); // 單獨縮放標尺時，以標尺群組中心為基準
+            mkrZoom = val;
             draw();
-        }
+        });
 
-        function zoomAll(zoomFactor) {
-            let cx = canvas.width / 2;
-            let cy = canvas.height / 2;
-            let wx = (cx - transform.x) / transform.scale;
-            let wy = (cy - transform.y) / transform.scale;
-            transform.scale *= zoomFactor;
-            transform.x = cx - wx * transform.scale;
-            transform.y = cy - wy * transform.scale;
-            for (let key in pts) {
-                pts[key].x = cx + (pts[key].x - cx) * zoomFactor;
-                pts[key].y = cy + (pts[key].y - cy) * zoomFactor;
-            }
+        sliderAll.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            let factor = val / allZoom;
+            
+            let cx = canvas.width/2; let cy = canvas.height/2;
+            applyZoomImg(factor, cx, cy);
+            applyZoomMkr(factor, cx, cy); // 同步縮放時，以螢幕中心為基準確保對位
+            
+            imgZoom *= factor; sliderImg.value = imgZoom;
+            mkrZoom *= factor; sliderMkr.value = mkrZoom;
+            allZoom = val;
             draw();
+        });
+
+        function drawMarkersOverlay(context) {
+            if (dragObj && (dragObj.type === 'point' || dragObj.type === 'group' || dragObj.type === 'line')) {
+                context.save();
+                context.setLineDash([6, 4]); context.lineWidth = 1.5;
+                
+                context.strokeStyle = dColor;
+                context.beginPath(); context.moveTo(pts.d_v1.x, pts.d_v1.y); context.lineTo(pts.d_v2.x, pts.d_v2.y); context.stroke();
+                context.beginPath(); context.moveTo(pts.d_h1.x, pts.d_h1.y); context.lineTo(pts.d_h2.x, pts.d_h2.y); context.stroke();
+                
+                context.strokeStyle = cColor;
+                context.beginPath(); context.moveTo(pts.c_v1.x, pts.c_v1.y); context.lineTo(pts.c_v2.x, pts.c_v2.y); context.stroke();
+                context.beginPath(); context.moveTo(pts.c_h1.x, pts.c_h1.y); context.lineTo(pts.c_h2.x, pts.c_h2.y); context.stroke();
+                context.restore();
+            }
+            context.setLineDash([]);
+
+            function drawDash(p, key) {
+                let dashLen = 14; 
+                context.beginPath();
+                if (key.includes('_v')) {
+                    context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y);
+                } else {
+                    context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2);
+                }
+                context.strokeStyle = '#fff'; context.lineWidth = 5; context.stroke();
+                
+                context.beginPath();
+                if (key.includes('_v')) {
+                    context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y);
+                } else {
+                    context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2);
+                }
+                context.strokeStyle = p.color; context.lineWidth = 3; context.stroke();
+            }
+            
+            for (let key in pts) drawDash(pts[key], key);
+            
+            let center = getCenter();
+            context.beginPath(); context.arc(center.x, center.y, 8, 0, Math.PI*2);
+            context.fillStyle = 'rgba(255, 255, 255, 0.4)'; context.fill();
+            context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
         }
-        /* ------------------------------ */
 
         function draw() {
             if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight;
             }
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             ctx.save();
@@ -269,99 +330,80 @@
             if(img.src) ctx.drawImage(img, 0, 0);
             ctx.restore();
 
-            // 修正：加上判斷式，只有在拖曳物件 (dragObj 存在) 時才畫出虛線十字
-            if (dragObj && (dragObj.type === 'point' || dragObj.type === 'group')) {
+            drawMarkersOverlay(ctx);
+            calculateRatio();
+
+            // 智慧放大鏡 (Loupe)
+            if (dragObj && lastMouse) {
+                let magX = (lastMouse.x < canvas.width / 2) ? canvas.width - 90 : 90;
+                let magY = 140; 
+                let magR = 75;  
+                let magZoom = 2.0; 
+
                 ctx.save();
-                ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(magX, magY, magR, 0, Math.PI*2);
+                ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
+                ctx.clip();
                 
-                ctx.strokeStyle = dColor;
-                ctx.beginPath(); ctx.moveTo(pts.d_v1.x, pts.d_v1.y); ctx.lineTo(pts.d_v2.x, pts.d_v2.y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
-                
-                ctx.strokeStyle = cColor;
-                ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, pts.c_v2.y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
+                ctx.fillStyle = '#111'; ctx.fill();
+
+                ctx.translate(magX, magY);
+                ctx.scale(magZoom, magZoom);
+                ctx.translate(-lastMouse.x, -lastMouse.y);
+
+                ctx.save();
+                ctx.translate(transform.x, transform.y);
+                ctx.scale(transform.scale, transform.scale);
+                if(img.src) ctx.drawImage(img, 0, 0);
+                ctx.restore();
+
+                drawMarkersOverlay(ctx);
+                ctx.restore();
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(magX - 8, magY); ctx.lineTo(magX + 8, magY);
+                ctx.moveTo(magX, magY - 8); ctx.lineTo(magX, magY + 8);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 1.5; ctx.stroke();
                 ctx.restore();
             }
-
-            // 確保畫實線橫槓時，不受虛線設定干擾
-            ctx.setLineDash([]);
-
-            function drawDash(p, key) {
-                let dashLen = 14; 
-                ctx.beginPath();
-                if (key.includes('_v')) {
-                    ctx.moveTo(p.x - dashLen/2, p.y); ctx.lineTo(p.x + dashLen/2, p.y);
-                } else {
-                    ctx.moveTo(p.x, p.y - dashLen/2); ctx.lineTo(p.x, p.y + dashLen/2);
-                }
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.stroke();
-                
-                ctx.beginPath();
-                if (key.includes('_v')) {
-                    ctx.moveTo(p.x - dashLen/2, p.y); ctx.lineTo(p.x + dashLen/2, p.y);
-                } else {
-                    ctx.moveTo(p.x, p.y - dashLen/2); ctx.lineTo(p.x, p.y + dashLen/2);
-                }
-                ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke();
-            }
-            
-            // 隨時畫出八個小橫槓，確保一直都在
-            for (let key in pts) drawDash(pts[key], key);
-            
-            let center = getCenter();
-            ctx.beginPath(); ctx.arc(center.x, center.y, 8, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-
-            calculateRatio();
         }
 
+        /* --- 連動滾輪與觸控，更新拉桿數值 --- */
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
             let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
             let mouseX = e.clientX; let mouseY = e.clientY;
 
-            if (e.shiftKey) {
+            if (e.shiftKey) { // 標尺縮放
                 let center = getCenter();
-                for (let key in pts) {
-                    pts[key].x = center.x + (pts[key].x - center.x) * zoomFactor;
-                    pts[key].y = center.y + (pts[key].y - center.y) * zoomFactor;
-                }
-            } else if (e.ctrlKey || e.metaKey) {
-                let wx = (mouseX - transform.x) / transform.scale;
-                let wy = (mouseY - transform.y) / transform.scale;
-                transform.scale *= zoomFactor;
-                transform.x = mouseX - wx * transform.scale;
-                transform.y = mouseY - wy * transform.scale;
-                for (let key in pts) {
-                    pts[key].x = mouseX + (pts[key].x - mouseX) * zoomFactor;
-                    pts[key].y = mouseY + (pts[key].y - mouseY) * zoomFactor;
-                }
-            } else {
-                let wx = (mouseX - transform.x) / transform.scale;
-                let wy = (mouseY - transform.y) / transform.scale;
-                transform.scale *= zoomFactor;
-                transform.x = mouseX - wx * transform.scale;
-                transform.y = mouseY - wy * transform.scale;
+                applyZoomMkr(zoomFactor, center.x, center.y);
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+            } else if (e.ctrlKey || e.metaKey) { // 同步縮放
+                applyZoomImg(zoomFactor, mouseX, mouseY);
+                applyZoomMkr(zoomFactor, mouseX, mouseY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+                allZoom *= zoomFactor; sliderAll.value = allZoom;
+            } else { // 圖片縮放
+                applyZoomImg(zoomFactor, mouseX, mouseY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
             }
             draw();
         }, {passive: false});
 
         canvas.addEventListener('mousedown', e => {
             let mouseX = e.clientX; let mouseY = e.clientY;
-            lastMouse = {x: mouseX, y: mouseY};
-            dragObj = null; isDraggingCanvas = false;
-
+            lastMouse = {x: mouseX, y: mouseY}; dragObj = null; isDraggingCanvas = false;
             let center = getCenter();
-            if (dist2({x: mouseX, y: mouseY}, center) < sqr(15)) {
-                dragObj = { type: 'group', lastX: mouseX, lastY: mouseY };
-                return;
-            }
+            if (dist2({x: mouseX, y: mouseY}, center) < sqr(15)) { dragObj = { type: 'group', lastX: mouseX, lastY: mouseY }; draw(); return; }
             for (let key in pts) {
-                if (dist2({x: mouseX, y: mouseY}, pts[key]) < sqr(20)) {
-                    dragObj = { type: 'point', pt: pts[key] };
-                    return;
+                if (dist2({x: mouseX, y: mouseY}, pts[key]) < sqr(20)) { dragObj = { type: 'point', pt: pts[key] }; draw(); return; }
+            }
+            let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2], [pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2] ];
+            for (let i = 0; i < lines.length; i++) {
+                if (distToSegmentSquared({x: mouseX, y: mouseY}, lines[i][0], lines[i][1]) < sqr(15)) {
+                    dragObj = { type: 'line', pts: lines[i], lastX: mouseX, lastY: mouseY }; draw(); return;
                 }
             }
             isDraggingCanvas = true;
@@ -376,11 +418,15 @@
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                 } else if (dragObj.type === 'point') {
                     dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                } else if (dragObj.type === 'line') {
+                    let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                    dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
+                    dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
+                    dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                 }
                 draw();
             } else if (isDraggingCanvas) {
-                transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y);
-                draw();
+                transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y); draw();
             }
             lastMouse = {x: mouseX, y: mouseY};
         });
@@ -389,37 +435,35 @@
 
         canvas.addEventListener('touchstart', e => {
             if (e.touches.length === 1) {
-                let touch = e.touches[0];
-                lastMouse = { x: touch.clientX, y: touch.clientY };
+                let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
+                lastMouse = { x: tx, y: ty }; dragObj = null; isDraggingCanvas = false;
                 let center = getCenter();
-                dragObj = null; isDraggingCanvas = false;
-                
-                // 擴大手機觸控的感應範圍，更好點擊
-                if (dist2({x: touch.clientX, y: touch.clientY}, center) < sqr(30)) {
-                    dragObj = { type: 'group', lastX: touch.clientX, lastY: touch.clientY };
-                } else {
+                let hit = false;
+                if (dist2({x: tx, y: ty}, center) < sqr(30)) { dragObj = { type: 'group', lastX: tx, lastY: ty }; hit = true; }
+                if (!hit) {
                     for (let key in pts) {
-                        if (dist2({x: touch.clientX, y: touch.clientY}, pts[key]) < sqr(35)) {
-                            dragObj = { type: 'point', pt: pts[key] };
-                            break;
+                        if (dist2({x: tx, y: ty}, pts[key]) < sqr(40)) { dragObj = { type: 'point', pt: pts[key] }; hit = true; break; }
+                    }
+                }
+                if (!hit) {
+                    let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2], [pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2] ];
+                    for (let i = 0; i < lines.length; i++) {
+                        if (distToSegmentSquared({x: tx, y: ty}, lines[i][0], lines[i][1]) < sqr(30)) {
+                            dragObj = { type: 'line', pts: lines[i], lastX: tx, lastY: ty }; hit = true; break;
                         }
                     }
                 }
-                if (!dragObj) isDraggingCanvas = true;
-                draw(); // 點擊時觸發重繪，讓虛線提早出現
+                if (!hit) isDraggingCanvas = true;
+                draw(); 
             } else if (e.touches.length === 2) {
-                lastTouchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
+                lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             }
         }, {passive: false});
 
         canvas.addEventListener('touchmove', e => {
             e.preventDefault();
             if (e.touches.length === 1 && lastMouse) {
-                let touch = e.touches[0];
-                let mouseX = touch.clientX; let mouseY = touch.clientY;
+                let mouseX = e.touches[0].clientX; let mouseY = e.touches[0].clientY;
                 if (dragObj) {
                     if (dragObj.type === 'group') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
@@ -427,34 +471,30 @@
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                     } else if (dragObj.type === 'point') {
                         dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                    } else if (dragObj.type === 'line') {
+                        let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                        dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
+                        dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
+                        dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                     }
                     draw();
                 } else if (isDraggingCanvas) {
-                    transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y);
-                    draw();
+                    transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y); draw();
                 }
                 lastMouse = { x: mouseX, y: mouseY };
             } else if (e.touches.length === 2) {
-                let dist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
+                let dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 let zoomFactor = dist / lastTouchDist;
-                let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2; let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 
-                let wx = (centerX - transform.x) / transform.scale;
-                let wy = (centerY - transform.y) / transform.scale;
-                transform.scale *= zoomFactor;
-                transform.x = centerX - wx * transform.scale;
-                transform.y = centerY - wy * transform.scale;
-                
-                for (let key in pts) {
-                    pts[key].x = centerX + (pts[key].x - centerX) * zoomFactor;
-                    pts[key].y = centerY + (pts[key].y - centerY) * zoomFactor;
-                }
-                lastTouchDist = dist;
-                draw();
+                // 觸控雙指預設為「同步縮放」
+                applyZoomImg(zoomFactor, centerX, centerY);
+                applyZoomMkr(zoomFactor, centerX, centerY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+                allZoom *= zoomFactor; sliderAll.value = allZoom;
+
+                lastTouchDist = dist; draw();
             }
         }, {passive: false});
 
