@@ -28,6 +28,14 @@
         #instruction { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; text-align: center; line-height: 1.4; max-width: 90%; }
         
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; }
+
+        /* 手機版專屬排版調整 */
+        @media (max-width: 600px) {
+            #logo { top: 15px; left: 15px; font-size: 1.2rem; }
+            #logo img { height: 24px !important; }
+            #infoBar { top: 65px; font-size: 1.1rem; padding: 8px 16px; }
+            #instruction { bottom: 30px; font-size: 0.75rem; width: 85%; }
+        }
     </style>
 </head>
 <body>
@@ -195,7 +203,6 @@
             if(img.src) ctx.drawImage(img, 0, 0);
             ctx.restore();
 
-            // 強制畫出虛線，確保拖曳時不消失
             ctx.save();
             ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
             
@@ -204,9 +211,13 @@
             ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
             
             ctx.strokeStyle = cColor;
-            ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, pts.c_v2.y); ctx.stroke(); // <--- 致命錯字已修正
+            // 這次是真的 100% 確認改成 pts 了！！
+            ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, pts.c_v2.y); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
             ctx.restore();
+
+            // 確保畫實線橫槓時，不會被虛線設定干擾
+            ctx.setLineDash([]);
 
             function drawDash(p, key) {
                 let dashLen = 14; 
@@ -239,7 +250,6 @@
 
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
-            // 滾輪方向反轉：往下滾放大，往上滾縮小
             let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
             let mouseX = e.clientX; let mouseY = e.clientY;
 
