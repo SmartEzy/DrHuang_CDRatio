@@ -24,8 +24,11 @@
         .val { font-weight: bold; margin: 0 6px; color: #fff; }
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         
-        #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 10px; line-height: 1.5; }
+        #instruction { display: none; }
         
+        #resetBtn { display: none; position: absolute; left: 20px; bottom: 20px; background: rgba(0,0,0,0.75); color: #fff; border: 1px solid #555; padding: 12px 20px; border-radius: 12px; font-size: 1.1rem; z-index: 10; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold; }
+        #resetBtn:active { background: #333; }
+
         #controlPanel { display: none; position: absolute; right: 20px; bottom: 20px; background: rgba(0,0,0,0.75); padding: 15px 20px; border-radius: 12px; z-index: 10; flex-direction: column; gap: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
         .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; }
@@ -44,9 +47,9 @@
             #logo { top: 15px; left: 15px; }
             #logo img { height: 28px !important; }
             #infoBar { top: 65px; font-size: 1.1rem; padding: 8px 16px; }
-            #instruction { display: none !important; }
             #controlPanel { right: 15px; bottom: 25px; padding: 12px 15px; gap: 14px; }
             input[type=range] { width: 110px; }
+            #resetBtn { left: 15px; bottom: 25px; padding: 10px 16px; font-size: 1rem; }
         }
     </style>
 </head>
@@ -67,14 +70,11 @@
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
     
-    <div id="instruction">
-        <b>滾輪</b>：縮圖<br><b>Shift+滾輪</b>：縮尺標<br><b>Ctrl+滾輪</b>：同步
-    </div>
+    <button id="resetBtn" onclick="resetView()">⌖ 置中</button>
 
     <div id="controlPanel">
         <div class="ctrl-group">
             <span>圖片</span>
-            <!-- 將 max 放寬到 15.0，提供極致的縮放彈性 -->
             <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
         </div>
         <div class="ctrl-group">
@@ -94,7 +94,7 @@
         const fileInput = document.getElementById('fileInput');
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
-        const instruction = document.getElementById('instruction');
+        const resetBtn = document.getElementById('resetBtn');
         const controlPanel = document.getElementById('controlPanel');
         
         const sliderImg = document.getElementById('sliderImg');
@@ -137,40 +137,13 @@
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
-                    instruction.style.display = 'block';
                     controlPanel.style.display = 'flex';
+                    resetBtn.style.display = 'block';
                     
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     
-                    transform.scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
-                    transform.x = (canvas.width - img.width * transform.scale) / 2;
-                    transform.y = (canvas.height - img.height * transform.scale) / 2;
-                    
-                    let cx = canvas.width / 2; let cy = canvas.height / 2;
-                    
-                    let detected = detectBrightCenter(img);
-                    if(detected) {
-                        cx = detected.x * transform.scale + transform.x;
-                        cy = detected.y * transform.scale + transform.y;
-                    }
-
-                    // 調整初始尺標比例：依據真實眼底圖比例，將預設大小縮小，更貼近實際 Disc 大小
-                    let scaledMin = Math.min(img.width * transform.scale, img.height * transform.scale);
-                    let dRy = scaledMin * 0.08; let dRx = scaledMin * 0.07; 
-                    let cRy = scaledMin * 0.04; let cRx = scaledMin * 0.035; 
-                    
-                    pts = {
-                        d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
-                        c_v1: {x: cx, y: cy - cRy, color: cColor},  c_v2: {x: cx, y: cy + cRy, color: cColor},
-                        d_h1: {x: cx - dRx, y: cy, color: dColor}, d_h2: {x: cx + dRx, y: cy, color: dColor},
-                        c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
-                    };
-                    
-                    imgZoom = 1.0; mkrZoom = 1.0; allZoom = 1.0;
-                    sliderImg.value = 1.0; sliderMkr.value = 1.0; sliderAll.value = 1.0;
-
-                    draw();
+                    resetView();
                 }
                 img.src = event.target.result;
             }
@@ -196,6 +169,33 @@
                 }
                 return { x: bestX * (image.width / tempCanvas.width), y: bestY * (image.height / tempCanvas.height) };
             } catch(e) { return null; }
+        }
+
+        function resetView() {
+            let detected = detectBrightCenter(img);
+            let discX = detected ? detected.x : img.width / 2;
+            let discY = detected ? detected.y : img.height / 2;
+
+            transform.scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+            transform.x = canvas.width / 2 - discX * transform.scale;
+            transform.y = canvas.height / 2 - discY * transform.scale;
+
+            let cx = canvas.width / 2; let cy = canvas.height / 2;
+            let scaledMin = Math.min(img.width * transform.scale, img.height * transform.scale);
+            let dRy = scaledMin * 0.08; let dRx = scaledMin * 0.07; 
+            let cRy = scaledMin * 0.04; let cRx = scaledMin * 0.035; 
+            
+            pts = {
+                d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
+                c_v1: {x: cx, y: cy - cRy, color: cColor},  c_v2: {x: cx, y: cy + cRy, color: cColor},
+                d_h1: {x: cx - dRx, y: cy, color: dColor}, d_h2: {x: cx + dRx, y: cy, color: dColor},
+                c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
+            };
+            
+            imgZoom = 1.0; mkrZoom = 1.0; allZoom = 1.0;
+            sliderImg.value = 1.0; sliderMkr.value = 1.0; sliderAll.value = 1.0;
+
+            draw();
         }
 
         function sqr(x) { return x * x; }
@@ -322,8 +322,8 @@
             drawMarkersOverlay(ctx);
             calculateRatio();
 
-            // 防擋視窗：排除拖曳中心白圈 (dragObj.type !== 'group')
-            if (dragObj && dragObj.type !== 'group' && lastMouse) {
+            // 【關鍵修改】防擋潛望鏡：只有在微調「端點小橫槓 (point)」時才出現！
+            if (dragObj && dragObj.type === 'point' && lastMouse) {
                 let magR = 90;     
                 let magZoom = 1.0; 
                 
@@ -426,7 +426,10 @@
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
             } else if (isDraggingCanvas) {
-                transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y); 
+                let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
+                transform.x += dx; transform.y += dy; 
+                for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
             }
@@ -481,7 +484,10 @@
                     lastMouse = { x: mouseX, y: mouseY };
                     draw();
                 } else if (isDraggingCanvas) {
-                    transform.x += (mouseX - lastMouse.x); transform.y += (mouseY - lastMouse.y); 
+                    let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
+                    transform.x += dx; transform.y += dy; 
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    
                     lastMouse = { x: mouseX, y: mouseY };
                     draw();
                 }
