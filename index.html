@@ -24,7 +24,7 @@
         .val { font-weight: bold; margin: 0 6px; color: #fff; }
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         
-        #instruction { display: none; }
+        #instruction { display: none; position: absolute; bottom: 75px; left: 20px; color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 10px; line-height: 1.5; z-index: 10; }
         
         #resetBtn { display: none; position: absolute; left: 20px; bottom: 20px; background: rgba(0,0,0,0.75); color: #fff; border: 1px solid #555; padding: 12px 20px; border-radius: 12px; font-size: 1.1rem; z-index: 10; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold; }
         #resetBtn:active { background: #333; }
@@ -47,6 +47,7 @@
             #logo { top: 15px; left: 15px; }
             #logo img { height: 28px !important; }
             #infoBar { top: 65px; font-size: 1.1rem; padding: 8px 16px; }
+            #instruction { display: none !important; } 
             #controlPanel { right: 15px; bottom: 25px; padding: 12px 15px; gap: 14px; }
             input[type=range] { width: 110px; }
             #resetBtn { left: 15px; bottom: 25px; padding: 10px 16px; font-size: 1rem; }
@@ -70,6 +71,10 @@
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
     
+    <div id="instruction">
+        <b>滾輪</b>：縮圖<br><b>Shift+滾輪</b>：縮尺標<br><b>Ctrl+滾輪</b>：同步
+    </div>
+
     <button id="resetBtn" onclick="resetView()">⌖ 置中</button>
 
     <div id="controlPanel">
@@ -94,6 +99,7 @@
         const fileInput = document.getElementById('fileInput');
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
+        const instruction = document.getElementById('instruction');
         const resetBtn = document.getElementById('resetBtn');
         const controlPanel = document.getElementById('controlPanel');
         
@@ -137,6 +143,7 @@
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
+                    instruction.style.display = 'block';
                     controlPanel.style.display = 'flex';
                     resetBtn.style.display = 'block';
                     
@@ -176,11 +183,15 @@
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
 
-            transform.scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+            let targetZoom = 2.5; 
+            let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+            transform.scale = baseScale * targetZoom;
+
             transform.x = canvas.width / 2 - discX * transform.scale;
             transform.y = canvas.height / 2 - discY * transform.scale;
 
             let cx = canvas.width / 2; let cy = canvas.height / 2;
+            
             let scaledMin = Math.min(img.width * transform.scale, img.height * transform.scale);
             let dRy = scaledMin * 0.08; let dRx = scaledMin * 0.07; 
             let cRy = scaledMin * 0.04; let cRx = scaledMin * 0.035; 
@@ -192,8 +203,8 @@
                 c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
             };
             
-            imgZoom = 1.0; mkrZoom = 1.0; allZoom = 1.0;
-            sliderImg.value = 1.0; sliderMkr.value = 1.0; sliderAll.value = 1.0;
+            imgZoom = targetZoom; mkrZoom = targetZoom; allZoom = targetZoom;
+            sliderImg.value = targetZoom; sliderMkr.value = targetZoom; sliderAll.value = targetZoom;
 
             draw();
         }
@@ -322,7 +333,6 @@
             drawMarkersOverlay(ctx);
             calculateRatio();
 
-            // 【關鍵修改】防擋潛望鏡：只有在微調「端點小橫槓 (point)」時才出現！
             if (dragObj && dragObj.type === 'point' && lastMouse) {
                 let magR = 90;     
                 let magZoom = 1.0; 
@@ -369,6 +379,47 @@
             }
         }
 
+        // ==========================================
+        // 核心升級：AI 智慧精準選取 (Smart Hit-Testing)
+        // ==========================================
+        function getHitTarget(tx, ty, isTouch) {
+            let center = getCenter();
+            let dCenter = Math.sqrt(dist2({x: tx, y: ty}, center));
+
+            let minPtDist = Infinity; let closestPt = null;
+            for (let key in pts) {
+                let d = Math.sqrt(dist2({x: tx, y: ty}, pts[key]));
+                if (d < minPtDist) { minPtDist = d; closestPt = pts[key]; }
+            }
+
+            let minLineDist = Infinity; let closestLine = null;
+            let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2], [pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2] ];
+            for (let i = 0; i < lines.length; i++) {
+                let d = Math.sqrt(distToSegmentSquared({x: tx, y: ty}, lines[i][0], lines[i][1]));
+                if (d < minLineDist) { minLineDist = d; closestLine = lines[i]; }
+            }
+
+            // 手機版感應範圍加大 30%，讓胖手指更好操作
+            let R_CENTER = isTouch ? 40 : 15;
+            let R_POINT  = isTouch ? 45 : 20;
+            let R_LINE   = isTouch ? 35 : 15;
+
+            // 目標競爭判斷邏輯
+            if (dCenter <= R_CENTER && dCenter <= minPtDist) {
+                // 如果距離中心夠近，且比端點還近 -> 抓取整組中心
+                return { type: 'group', lastX: tx, lastY: ty };
+            } 
+            else if (minPtDist <= R_POINT) {
+                // 如果在端點範圍內 -> 優先抓取端點橫槓 (磁吸效應)
+                return { type: 'point', pt: closestPt };
+            } 
+            else if (minLineDist <= R_LINE) {
+                // 如果都不在中心跟端點範圍內，才判定是否抓到線條
+                return { type: 'line', pts: closestLine, lastX: tx, lastY: ty };
+            }
+            return null; // 都沒抓到，判定為拖曳背景圖片
+        }
+
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
             let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
@@ -393,19 +444,11 @@
 
         canvas.addEventListener('mousedown', e => {
             let mouseX = e.clientX; let mouseY = e.clientY;
-            lastMouse = {x: mouseX, y: mouseY}; dragObj = null; isDraggingCanvas = false;
-            let center = getCenter();
-            if (dist2({x: mouseX, y: mouseY}, center) < sqr(15)) { dragObj = { type: 'group', lastX: mouseX, lastY: mouseY }; draw(); return; }
-            for (let key in pts) {
-                if (dist2({x: mouseX, y: mouseY}, pts[key]) < sqr(20)) { dragObj = { type: 'point', pt: pts[key] }; draw(); return; }
-            }
-            let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2], [pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2] ];
-            for (let i = 0; i < lines.length; i++) {
-                if (distToSegmentSquared({x: mouseX, y: mouseY}, lines[i][0], lines[i][1]) < sqr(15)) {
-                    dragObj = { type: 'line', pts: lines[i], lastX: mouseX, lastY: mouseY }; draw(); return;
-                }
-            }
-            isDraggingCanvas = true;
+            lastMouse = {x: mouseX, y: mouseY}; 
+            
+            dragObj = getHitTarget(mouseX, mouseY, false);
+            isDraggingCanvas = !dragObj;
+            draw();
         });
 
         canvas.addEventListener('mousemove', e => {
@@ -440,24 +483,11 @@
         canvas.addEventListener('touchstart', e => {
             if (e.touches.length === 1) {
                 let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
-                lastMouse = { x: tx, y: ty }; dragObj = null; isDraggingCanvas = false;
-                let center = getCenter();
-                let hit = false;
-                if (dist2({x: tx, y: ty}, center) < sqr(30)) { dragObj = { type: 'group', lastX: tx, lastY: ty }; hit = true; }
-                if (!hit) {
-                    for (let key in pts) {
-                        if (dist2({x: tx, y: ty}, pts[key]) < sqr(40)) { dragObj = { type: 'point', pt: pts[key] }; hit = true; break; }
-                    }
-                }
-                if (!hit) {
-                    let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2], [pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2] ];
-                    for (let i = 0; i < lines.length; i++) {
-                        if (distToSegmentSquared({x: tx, y: ty}, lines[i][0], lines[i][1]) < sqr(30)) {
-                            dragObj = { type: 'line', pts: lines[i], lastX: tx, lastY: ty }; hit = true; break;
-                        }
-                    }
-                }
-                if (!hit) isDraggingCanvas = true;
+                lastMouse = { x: tx, y: ty }; 
+                
+                // 套用智慧精準選取 (手機模式 = true)
+                dragObj = getHitTarget(tx, ty, true);
+                isDraggingCanvas = !dragObj;
                 draw(); 
             } else if (e.touches.length === 2) {
                 lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
