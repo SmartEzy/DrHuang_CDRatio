@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- Web App 專屬設定 (手機加入主畫面用) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CDRatio">
@@ -34,7 +33,6 @@
 <body>
 
     <div id="logo">
-        <!-- 畫面左上角的自訂 Logo 圖片 -->
         <img src="logo.png" alt="Logo" style="height: 35px; border-radius: 6px;"> 
         <span class="logo-text">CDRatio</span>
     </div>
@@ -197,17 +195,18 @@
             if(img.src) ctx.drawImage(img, 0, 0);
             ctx.restore();
 
-            if (dragObj) {
-                ctx.save();
-                ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
-                ctx.strokeStyle = dColor;
-                ctx.beginPath(); ctx.moveTo(pts.d_v1.x, pts.d_v1.y); ctx.lineTo(pts.d_v2.x, pts.d_v2.y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
-                ctx.strokeStyle = cColor;
-                ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, ctx.c_v2.y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
-                ctx.restore();
-            }
+            // 強制畫出虛線，確保拖曳時不消失
+            ctx.save();
+            ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
+            
+            ctx.strokeStyle = dColor;
+            ctx.beginPath(); ctx.moveTo(pts.d_v1.x, pts.d_v1.y); ctx.lineTo(pts.d_v2.x, pts.d_v2.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
+            
+            ctx.strokeStyle = cColor;
+            ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, ctx.c_v2.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
+            ctx.restore();
 
             function drawDash(p, key) {
                 let dashLen = 14; 
@@ -218,15 +217,18 @@
                     ctx.moveTo(p.x, p.y - dashLen/2); ctx.lineTo(p.x, p.y + dashLen/2);
                 }
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.stroke();
+                
                 ctx.beginPath();
                 if (key.includes('_v')) {
                     ctx.moveTo(p.x - dashLen/2, p.y); ctx.lineTo(p.x + dashLen/2, p.y);
                 } else {
                     ctx.moveTo(p.x, p.y - dashLen/2); ctx.lineTo(p.x, p.y + dashLen/2);
                 }
+                // 確保套用正確的紅綠顏色
                 ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke();
             }
             
+            // 強制畫出八個小橫槓，確保拖曳時不消失
             for (let key in pts) drawDash(pts[key], key);
             
             let center = getCenter();
@@ -239,7 +241,8 @@
 
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
-            let zoomFactor = e.deltaY < 0 ? 1.05 : 0.95; 
+            // 修正 1：滾輪方向反轉
+            let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
             let mouseX = e.clientX; let mouseY = e.clientY;
 
             if (e.shiftKey) {
