@@ -204,7 +204,7 @@
             ctx.beginPath(); ctx.moveTo(pts.d_h1.x, pts.d_h1.y); ctx.lineTo(pts.d_h2.x, pts.d_h2.y); ctx.stroke();
             
             ctx.strokeStyle = cColor;
-            ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, ctx.c_v2.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pts.c_v1.x, pts.c_v1.y); ctx.lineTo(pts.c_v2.x, pts.c_v2.y); ctx.stroke(); // <--- 致命錯字已修正
             ctx.beginPath(); ctx.moveTo(pts.c_h1.x, pts.c_h1.y); ctx.lineTo(pts.c_h2.x, pts.c_h2.y); ctx.stroke();
             ctx.restore();
 
@@ -224,11 +224,9 @@
                 } else {
                     ctx.moveTo(p.x, p.y - dashLen/2); ctx.lineTo(p.x, p.y + dashLen/2);
                 }
-                // 確保套用正確的紅綠顏色
                 ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke();
             }
             
-            // 強制畫出八個小橫槓，確保拖曳時不消失
             for (let key in pts) drawDash(pts[key], key);
             
             let center = getCenter();
@@ -241,7 +239,7 @@
 
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
-            // 修正 1：滾輪方向反轉
+            // 滾輪方向反轉：往下滾放大，往上滾縮小
             let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
             let mouseX = e.clientX; let mouseY = e.clientY;
 
