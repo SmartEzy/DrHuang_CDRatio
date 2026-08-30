@@ -37,7 +37,7 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        #statusToast { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; color: #4cd964; padding: 6px 16px; border-radius: 20px; font-size: 0.9rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        #statusToast { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; color: #4cd964; padding: 10px 20px; border-radius: 20px; font-size: 0.9rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; text-align: center; }
 
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
@@ -63,7 +63,6 @@
         .seg-btn:last-child { border-right: none; }
         .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
-        .seg-btn.active-ai { background: rgba(74, 144, 226, 0.2); color: #4a90e2; box-shadow: inset 0 -3px 0 #4a90e2; }
         .seg-btn:active { transform: scale(0.90); }
 
         #sliderPanel { gap: 12px; }
@@ -226,7 +225,6 @@
         let showCup = false;  
         let showDisc = true;  
 
-        // API Key 本地安全管理
         function getSavedApiKey() {
             return localStorage.getItem('cdratio_gemini_api_key') || '';
         }
@@ -285,7 +283,6 @@
 
                     resetView();
 
-                    // 若有設定 Key，載入圖片時自動執行 AI 定位
                     if (getSavedApiKey()) {
                         runAILocalization();
                     }
@@ -295,7 +292,6 @@
             reader.readAsDataURL(file);
         }
 
-        // 呼叫 Gemini 視覺 API 進行結構定位 (已加入穩定版模型與 JSON 強制設定)
         async function runAILocalization() {
             let apiKey = getSavedApiKey();
             if (!apiKey) {
@@ -324,8 +320,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0}
 }`;
 
-                // 更換為目前最穩定的 gemini-1.5-flash 模型
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // 【已修正】將模型名稱更新為最新版本的 gemini-1.5-flash-latest
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -337,7 +333,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                                 { inline_data: { mime_type: mimeType, data: base64Data } }
                             ]
                         }],
-                        // 強制規定模型回傳乾淨的 JSON 格式
                         generationConfig: {
                             response_mime_type: "application/json"
                         }
@@ -365,8 +360,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
 
             } catch (err) {
                 console.error("AI 分析發生錯誤:", err);
-                // 將具體錯誤訊息顯示在畫面上
-                showToast('⚠️ AI 失敗，已切換手動模式: ' + err.message.substring(0, 50));
+                // 【已優化】加長錯誤訊息截取長度，方便直接在畫面上看完整錯誤
+                showToast('⚠️ AI 失敗，已切換手動模式: ' + err.message.substring(0, 150));
             }
         }
 
@@ -382,13 +377,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             let cupImgRx = (Math.abs(coords.cup.xmax - coords.cup.xmin) / 2) * img.width;
             let cupImgRy = (Math.abs(coords.cup.ymax - coords.cup.ymin) / 2) * img.height;
 
-            // 調整視圖讓 Disc 置中並適當放大
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discImgCx * transform.scale;
             transform.y = canvas.height / 2 - discImgCy * transform.scale;
 
-            // 將影像絕對座標轉為畫布上的螢幕座標
             function toScreen(ix, iy) {
                 return {
                     x: transform.x + ix * transform.scale,
