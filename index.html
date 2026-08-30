@@ -44,24 +44,21 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* 動作面板：修正排版，讓文字在不包含開關的區域完美置中 */
-        #actionPanel { width: 126px; padding: 12px; gap: 10px; align-items: stretch; }
-        .action-item { display: flex; align-items: center; justify-content: space-between; height: 28px; width: 100%; box-sizing: border-box; }
+        /* === 動作面板與三段式按鈕 === */
+        #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
+        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
         .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { cursor: pointer; margin: 0; }
-        /* 文字區域：總寬度扣除開關，並於內部置中 */
-        .action-text { width: calc(100% - 42px); text-align: center; color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; }
-        
-        .switch { position: relative; width: 42px; height: 24px; display: inline-block; flex-shrink: 0; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
-        .slider-toggle:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-        input:checked + .slider-toggle { background-color: #4cd964; }
-        input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
+        .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
+        .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
+        .seg-btn:last-child { border-right: none; }
+        .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
+        .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
+        .seg-btn:active { transform: scale(0.90); }
 
+        /* 滑桿區設定 */
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
@@ -95,7 +92,7 @@
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
-            #actionPanel { width: 120px; padding: 10px; } 
+            #actionPanel { width: 130px; padding: 10px; } 
             input[type=range] { width: 80px; }
         }
     </style>
@@ -126,23 +123,13 @@
     </div>
 
     <div id="rightControls">
+        <!-- 採用醫療級三段式按鈕 -->
         <div class="panel-box" id="actionPanel">
-            <!-- 新增的全標記開關 -->
-            <label class="toggle-container action-item">
-                <span class="action-text">全標記</span>
-                <div class="switch">
-                    <input type="checkbox" id="markerAllToggle" checked onchange="toggleAllMarkers(this.checked)">
-                    <span class="slider-toggle"></span>
-                </div>
-            </label>
-            <!-- 新增的綠標記 (Cup) 開關 -->
-            <label class="toggle-container action-item">
-                <span class="action-text">綠標記</span>
-                <div class="switch">
-                    <input type="checkbox" id="markerCupToggle" onchange="toggleCupMarkers(this.checked)">
-                    <span class="slider-toggle"></span>
-                </div>
-            </label>
+            <div class="action-item seg-group">
+                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
+                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')">Disc</button>
+                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">C/D</button>
+            </div>
             <div class="action-item">
                 <button class="action-btn" onclick="resetView()">置中</button>
             </div>
@@ -190,9 +177,6 @@
         const instruction = document.getElementById('instruction');
         const rightControls = document.getElementById('rightControls');
         
-        const markerAllToggle = document.getElementById('markerAllToggle');
-        const markerCupToggle = document.getElementById('markerCupToggle');
-        
         const sliderCD = document.getElementById('sliderCD');
         const sliderImg = document.getElementById('sliderImg');
         const sliderMkr = document.getElementById('sliderMkr');
@@ -220,9 +204,9 @@
         let lastTouchTime = 0; 
         let isUpdatingCD = false; 
 
-        // 獨立雙開關狀態
-        let showAllMarkers = true;  
-        let showCupMarker = false;  
+        // 獨立雙標記狀態
+        let showCup = false;  // 預設隱藏綠色 Cup
+        let showDisc = true;  // 預設顯示紅色 Disc 與十分割點
 
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
@@ -252,11 +236,10 @@
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     
-                    // 初始載入：打開全標記，但【隱藏綠標記】
-                    showAllMarkers = true;
-                    markerAllToggle.checked = true;
-                    showCupMarker = false;
-                    markerCupToggle.checked = false;
+                    // 初始設定：只顯示 Disc (紅)，隱藏 Cup (綠)
+                    showCup = false;
+                    showDisc = true;
+                    updateSegUI();
 
                     resetView();
                 }
@@ -265,35 +248,53 @@
             reader.readAsDataURL(file);
         }
 
-        // 雙開關控制邏輯
-        function toggleAllMarkers(isChecked) {
-            showAllMarkers = isChecked;
+        // 三段式按鈕控制邏輯
+        function toggleSeg(type) {
+            if (type === 'Cup') {
+                showCup = !showCup;
+            } else if (type === 'Disc') {
+                showDisc = !showDisc;
+            } else if (type === 'All') {
+                // 如果兩者都開著，就一鍵全關；否則一鍵全開
+                if (showCup && showDisc) {
+                    showCup = false;
+                    showDisc = false;
+                } else {
+                    showCup = true;
+                    showDisc = true;
+                }
+            }
+            updateSegUI();
             draw();
         }
 
-        function toggleCupMarkers(isChecked) {
-            showCupMarker = isChecked;
-            // 如果打開綠標，順便確保主標記也是開的
-            if (isChecked && !showAllMarkers) {
-                showAllMarkers = true;
-                markerAllToggle.checked = true;
+        // 更新按鈕的發光 UI 狀態
+        function updateSegUI() {
+            const btnCup = document.getElementById('btnCup');
+            const btnDisc = document.getElementById('btnDisc');
+            
+            if (showCup) {
+                btnCup.classList.add('active-cup');
+            } else {
+                btnCup.classList.remove('active-cup');
             }
-            draw();
+
+            if (showDisc) {
+                btnDisc.classList.add('active-disc');
+            } else {
+                btnDisc.classList.remove('active-disc');
+            }
         }
 
         function setCDRatio(ratioVal) {
             isUpdatingCD = true; 
-            
             let targetV = parseFloat(ratioVal);
             
-            // 只要調整 C/D，就自動把綠標記打開，體驗更順暢
-            if (!showCupMarker) {
-                showCupMarker = true;
-                markerCupToggle.checked = true;
-                if (!showAllMarkers) {
-                    showAllMarkers = true;
-                    markerAllToggle.checked = true;
-                }
+            // 滑桿防呆：自動喚醒 Cup 與 Disc
+            if (!showCup || !showDisc) {
+                showCup = true;
+                showDisc = true;
+                updateSegUI();
             }
 
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
@@ -522,39 +523,42 @@
         });
 
         function drawMarkersOverlay(context) {
-            if (!showAllMarkers) return; 
+            if (!showDisc && !showCup) return; 
             
             context.save();
-            // 十等份紅線尺標 (依賴全標記顯示)
-            for (let i = 1; i <= 9; i++) {
-                if (i === 5) continue;
-                let f = i / 10;
-                
-                let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
-                let vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
-                context.beginPath();
-                context.arc(vx, vy, 2.5, 0, Math.PI*2);
-                context.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                context.fill();
-                context.beginPath();
-                context.arc(vx, vy, 1.5, 0, Math.PI*2);
-                context.fillStyle = dColor;
-                context.fill();
+            
+            // 只有當 Disc 開啟時，才顯示十分割點
+            if (showDisc) {
+                for (let i = 1; i <= 9; i++) {
+                    if (i === 5) continue;
+                    let f = i / 10;
+                    
+                    let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
+                    let vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
+                    context.beginPath();
+                    context.arc(vx, vy, 2.5, 0, Math.PI*2);
+                    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    context.fill();
+                    context.beginPath();
+                    context.arc(vx, vy, 1.5, 0, Math.PI*2);
+                    context.fillStyle = dColor;
+                    context.fill();
 
-                let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x);
-                let hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
-                context.beginPath();
-                context.arc(hx, hy, 2.5, 0, Math.PI*2);
-                context.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                context.fill();
-                context.beginPath();
-                context.arc(hx, hy, 1.5, 0, Math.PI*2);
-                context.fillStyle = dColor;
-                context.fill();
+                    let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x);
+                    let hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
+                    context.beginPath();
+                    context.arc(hx, hy, 2.5, 0, Math.PI*2);
+                    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    context.fill();
+                    context.beginPath();
+                    context.arc(hx, hy, 1.5, 0, Math.PI*2);
+                    context.fillStyle = dColor;
+                    context.fill();
+                }
             }
             context.restore();
 
-            function drawDash(p, key) {
+            function drawDash(p, key, color) {
                 let dashLen = 14; 
                 context.beginPath();
                 if (key.includes('_v')) {
@@ -570,36 +574,19 @@
                 } else {
                     context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2);
                 }
-                context.strokeStyle = p.color; context.lineWidth = 3; context.stroke();
+                context.strokeStyle = color; context.lineWidth = 3; context.stroke();
             }
             
-            // 繪製端點：若綠標記關閉，則略過 c_ 開頭的座標
+            // 根據獨立開關決定要畫哪些端點
             for (let key in pts) {
-                if (!showCupMarker && key.startsWith('c_')) continue;
-                drawDash(pts[key], key);
+                if (key.startsWith('d_') && showDisc) drawDash(pts[key], key, dColor);
+                if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
             let center = getCenter();
             context.beginPath(); context.arc(center.x, center.y, 8, 0, Math.PI*2);
             context.fillStyle = 'rgba(255, 255, 255, 0.4)'; context.fill();
             context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
-            
-            // 拖曳時的輔助虛線
-            if (dragObj && (dragObj.type === 'point' || dragObj.type === 'group' || dragObj.type === 'line')) {
-                context.save();
-                context.setLineDash([6, 4]); context.lineWidth = 1.5;
-                
-                context.strokeStyle = dColor;
-                context.beginPath(); context.moveTo(pts.d_v1.x, pts.d_v1.y); context.lineTo(pts.d_v2.x, pts.d_v2.y); context.stroke();
-                context.beginPath(); context.moveTo(pts.d_h1.x, pts.d_h1.y); context.lineTo(pts.d_h2.x, pts.d_h2.y); context.stroke();
-                
-                if (showCupMarker) {
-                    context.strokeStyle = cColor;
-                    context.beginPath(); context.moveTo(pts.c_v1.x, pts.c_v1.y); context.lineTo(pts.c_v2.x, pts.c_v2.y); context.stroke();
-                    context.beginPath(); context.moveTo(pts.c_h1.x, pts.c_h1.y); context.lineTo(pts.c_h2.x, pts.c_h2.y); context.stroke();
-                }
-                context.restore();
-            }
         }
 
         function draw() {
@@ -617,7 +604,7 @@
             drawMarkersOverlay(ctx);
             calculateRatio();
 
-            if (isTouchMode && showAllMarkers && dragObj && dragObj.type === 'point' && lastMouse) {
+            if (isTouchMode && (showDisc || showCup) && dragObj && dragObj.type === 'point' && lastMouse) {
                 let magR = 90;     
                 let magZoom = 1.0; 
                 
@@ -660,7 +647,7 @@
         }
 
         function getHitTarget(tx, ty, isTouch) {
-            if (!showAllMarkers) return null; 
+            if (!showDisc && !showCup) return null; 
 
             let center = getCenter();
             let dCenter = Math.sqrt(dist2({x: tx, y: ty}, center));
@@ -668,10 +655,9 @@
             let minPtDist = Infinity; let closestPt = null;
             let validPts = {};
             
-            // 過濾掉隱藏的點
             for (let key in pts) {
-                if (!showCupMarker && key.startsWith('c_')) continue;
-                validPts[key] = pts[key];
+                if (key.startsWith('d_') && showDisc) validPts[key] = pts[key];
+                if (key.startsWith('c_') && showCup) validPts[key] = pts[key];
             }
 
             for (let key in validPts) {
@@ -680,10 +666,9 @@
             }
 
             let minLineDist = Infinity; let closestLine = null;
-            let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2] ];
-            if (showCupMarker) {
-                lines.push([pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2]);
-            }
+            let lines = [];
+            if (showDisc) lines.push([pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2]);
+            if (showCup) lines.push([pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2]);
 
             for (let i = 0; i < lines.length; i++) {
                 let d = Math.sqrt(distToSegmentSquared({x: tx, y: ty}, lines[i][0], lines[i][1]));
