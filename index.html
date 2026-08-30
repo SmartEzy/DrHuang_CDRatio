@@ -18,7 +18,8 @@
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
         
-        #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; pointer-events: none; }
+        #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; pointer-events: auto; transition: 0.2s; }
+        #dropZone:hover { background: #333; border-color: #888; }
         #fileInput { display: none; }
         
         #infoBar { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 8px 20px; border-radius: 30px; font-size: 1.4rem; z-index: 10; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); white-space: nowrap; }
@@ -26,25 +27,27 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        /* 說明區：精簡文字、對齊冒號 */
+        /* 說明區：更緊湊的冒號對齊 */
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
-        #instruction td { padding: 3px 4px; vertical-align: middle; }
+        #instruction td { padding: 3px 2px; vertical-align: middle; }
         #instruction td:first-child { text-align: right; }
-        #instruction td:nth-child(2) { font-weight: bold; text-align: center; }
+        #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
 
-        /* 右下角控制區容器 (上下兩塊分離) */
-        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; gap: 14px; z-index: 10; }
-        .panel-box { background: rgba(0,0,0,0.75); padding: 16px; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; }
+        /* 右下角控制區容器：兩個獨立面板分離 */
+        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 16px; z-index: 10; }
+        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; }
         
-        /* 動作按鈕區 (直排) */
-        #actionPanel { gap: 12px; min-width: 110px; }
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 10px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; width: 100%; }
-        .action-btn:active { background: #222; transform: scale(0.97); }
+        /* 動作按鈕區 (直排靠右、小巧尺寸、統一高度) */
+        #actionPanel { align-items: flex-end; gap: 10px; min-width: auto; }
+        .action-item { display: flex; align-items: center; justify-content: flex-end; height: 28px; }
+        
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0 16px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; }
+        .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .toggle-container { gap: 10px; cursor: pointer; }
         .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; }
-        .switch { position: relative; width: 42px; height: 24px; }
+        .switch { position: relative; width: 42px; height: 24px; display: inline-block; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
         .slider-toggle:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
@@ -54,7 +57,7 @@
         /* 滑桿區 */
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; }
+        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: right; font-weight: bold; }
         
         input[type=range] { -webkit-appearance: none; width: 110px; background: transparent; }
         input[type=range]:focus { outline: none; }
@@ -73,9 +76,7 @@
             #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
-            .panel-box { padding: 12px 14px; border-radius: 12px; }
-            #actionPanel { gap: 10px; }
-            .action-btn { padding: 8px; font-size: 0.9rem; }
+            .panel-box { padding: 12px; border-radius: 12px; }
             input[type=range] { width: 100px; }
         }
     </style>
@@ -87,8 +88,8 @@
         <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
     </div>
 
-    <!-- 全域換圖 -->
-    <div id="dropZone" style="pointer-events: auto;" onclick="document.getElementById('fileInput').click()">
+    <!-- 拖拉背景換圖 -->
+    <div id="dropZone" onclick="document.getElementById('fileInput').click()">
         點擊畫面選擇圖片，或將眼底圖拖曳至視窗內
         <input type="file" id="fileInput" accept="image/*" />
     </div>
@@ -106,19 +107,22 @@
         </table>
     </div>
 
-    <!-- 雙板塊控制區 -->
     <div id="rightControls">
-        <!-- 上方：動作面板 -->
+        <!-- 上方：動作面板 (直排靠右、高度統一) -->
         <div class="panel-box" id="actionPanel">
-            <label class="toggle-container">
+            <label class="toggle-container action-item">
                 <span>標記</span>
                 <div class="switch">
                     <input type="checkbox" id="markerToggle" checked onchange="toggleMarkers(this.checked)">
                     <span class="slider-toggle"></span>
                 </div>
             </label>
-            <button class="action-btn" onclick="resetView()">⌖ 置中</button>
-            <button class="action-btn" onclick="document.getElementById('fileInput').click()">📁 換圖</button>
+            <div class="action-item">
+                <button class="action-btn" onclick="resetView()">⌖ 置中</button>
+            </div>
+            <div class="action-item">
+                <button class="action-btn" onclick="document.getElementById('fileInput').click()">📁 換圖</button>
+            </div>
         </div>
 
         <!-- 下方：滑桿面板 -->
@@ -220,21 +224,21 @@
         }
 
         // ==========================================
-        // 修復版演算法：柔性降噪，避免絕對遮罩漏抓邊緣
+        // 演算法大升級：解剖學導向 (水平帶加權) AI 尋跡
         // ==========================================
         function detectBrightCenter(image) {
             try {
                 const tempCanvas = document.createElement('canvas');
                 const tCtx = tempCanvas.getContext('2d');
                 
-                // 大幅降噪：縮小至寬度 40px，細小的月牙反光會被融合掉，而大塊 Disc 會留存
+                // 降噪模糊
                 const scale = 40 / image.width;
                 tempCanvas.width = 40; 
                 tempCanvas.height = Math.floor(image.height * scale);
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
-                // 找出眼球背景輪廓
+                // 第一步：找眼球真實邊界 Bounding Box
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
                 for (let i = 0; i < imgData.length; i += 4) {
                     if (imgData[i] > 10) { 
@@ -247,29 +251,35 @@
                 
                 let eyeCx = (minX + maxX) / 2;
                 let eyeCy = (minY + maxY) / 2;
-                let eyeR = Math.min(maxX - minX, maxY - minY) / 2;
-                
-                // 只剔除最極端的 5% 邊界 (用來防禦最外圍的高亮白框)
-                let searchR = eyeR * 0.95; 
+                let eyeRx = (maxX - minX) / 2;
+                let eyeRy = (maxY - minY) / 2;
 
                 let maxBrightness = 0; 
                 let bestX = eyeCx; 
                 let bestY = eyeCy;
                 
-                for (let y = 0; y < tempCanvas.height; y++) {
-                    for (let x = 0; x < tempCanvas.width; x++) {
-                        let dx = x - eyeCx;
-                        let dy = y - eyeCy;
-                        let dist = Math.sqrt(dx*dx + dy*dy);
-                        
-                        if (dist > searchR) continue; 
-                        
+                // 第二步：基於解剖學位置的加權掃描
+                for (let y = minY; y <= maxY; y++) {
+                    for (let x = minX; x <= maxX; x++) {
                         let idx = (y * tempCanvas.width + x) * 4;
                         let brightness = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
                         
-                        // 柔性中心加權：邊緣稍微打折，如果邊緣有小反光，競爭力會輸給內側的大盤
-                        let centerBias = 1 - (dist / eyeR) * 0.25; 
-                        let weightedBrightness = brightness * centerBias;
+                        // 計算標準化的 X, Y 距離 (0 ~ 1)
+                        let nx = Math.abs(x - eyeCx) / eyeRx; 
+                        let ny = Math.abs(y - eyeCy) / eyeRy; 
+                        
+                        // 絕對封鎖：拒絕極端的邊緣環 (半徑 > 85%)，徹底根除上下左右的邊界反光
+                        let distFromCenter = Math.sqrt(nx*nx + ny*ny);
+                        if (distFromCenter > 0.85) continue; 
+                        
+                        // 【關鍵加權】Y軸：視神經盤只會在水平線上！只要稍微偏離水平中心，立刻重罰分數
+                        let yWeight = Math.max(0, 1 - Math.pow(ny / 0.4, 2)); 
+                        
+                        // 【關鍵加權】X軸：視神經盤可能在左、中、右。給予極高的寬容度，直到靠近邊緣才打折
+                        let xWeight = Math.max(0, 1 - Math.pow(nx / 0.9, 2));
+                        
+                        let finalWeight = yWeight * xWeight;
+                        let weightedBrightness = brightness * finalWeight;
 
                         if (weightedBrightness > maxBrightness) { 
                             maxBrightness = weightedBrightness; 
