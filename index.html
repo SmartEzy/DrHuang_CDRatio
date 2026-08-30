@@ -28,11 +28,17 @@
         #dropZone:hover { background: #333; border-color: #888; }
         #fileInput { display: none; }
         
+        #topBar { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; align-items: center; z-index: 20; }
+        .setting-btn { background: rgba(0,0,0,0.6); color: #bbb; border: 1px solid #555; border-radius: 20px; padding: 6px 14px; font-size: 0.85rem; cursor: pointer; backdrop-filter: blur(5px); transition: 0.2s; }
+        .setting-btn:hover { color: #fff; background: rgba(255,255,255,0.15); }
+
         #infoBar { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 8px 20px; border-radius: 30px; font-size: 1.4rem; z-index: 10; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); white-space: nowrap; }
         .val { font-weight: bold; margin: 0 6px; color: #fff; }
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
+        #statusToast { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; color: #4cd964; padding: 6px 16px; border-radius: 20px; font-size: 0.9rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
         #instruction td { padding: 3px 2px; vertical-align: middle; }
@@ -49,12 +55,15 @@
         
         .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
+        .action-btn-ai { background: linear-gradient(135deg, #1e3c72, #2a5298); border: 1px solid #4a90e2; }
+        .action-btn-ai:active { background: #1e3c72; }
 
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
         .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
         .seg-btn:last-child { border-right: none; }
         .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
+        .seg-btn.active-ai { background: rgba(74, 144, 226, 0.2); color: #4a90e2; box-shadow: inset 0 -3px 0 #4a90e2; }
         .seg-btn:active { transform: scale(0.90); }
 
         #sliderPanel { gap: 12px; }
@@ -86,7 +95,8 @@
             #logo { top: 15px; left: 15px; }
             #logo img { height: 28px !important; }
             #logoText { font-size: 1.1rem; margin-left: 8px; }
-            #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
+            #topBar { top: 15px; right: 15px; }
+            #infoBar { top: 15px; left: auto; right: 90px; transform: none; font-size: 1rem; padding: 6px 12px; }
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
@@ -102,6 +112,10 @@
         <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
     </div>
 
+    <div id="topBar">
+        <button class="setting-btn" onclick="openKeySettings()">⚙️ API Key</button>
+    </div>
+
     <div id="dropZone" onclick="document.getElementById('fileInput').click()">
         點擊畫面選擇圖片，或將眼底圖拖曳至視窗內
         <input type="file" id="fileInput" accept="image/*" />
@@ -111,6 +125,8 @@
         <span class="label">V:</span><span id="vRatio" class="val">0.00</span>
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
+
+    <div id="statusToast"></div>
     
     <div id="instruction">
         <table>
@@ -127,6 +143,9 @@
                 <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
                 <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')">Disc</button>
                 <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
+            </div>
+            <div class="action-item">
+                <button class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI 定位</button>
             </div>
             <div class="action-item">
                 <button class="action-btn" onclick="resetView()">置中</button>
@@ -172,6 +191,7 @@
         const fileInput = document.getElementById('fileInput');
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
+        const statusToast = document.getElementById('statusToast');
         const instruction = document.getElementById('instruction');
         const rightControls = document.getElementById('rightControls');
         
@@ -182,6 +202,7 @@
 
         const ctx = canvas.getContext('2d');
         let img = new Image();
+        let rawBase64 = null;
         
         const cColor = '#4cd964'; 
         const dColor = '#ff3b30'; 
@@ -205,6 +226,30 @@
         let showCup = false;  
         let showDisc = true;  
 
+        // API Key 本地安全管理
+        function getSavedApiKey() {
+            return localStorage.getItem('cdratio_gemini_api_key') || '';
+        }
+
+        function openKeySettings() {
+            let currentKey = getSavedApiKey();
+            let newKey = prompt('請貼上您的 Google Gemini API Key：\n(金鑰僅儲存在您目前的瀏覽器本地端，安全無虞)', currentKey);
+            if (newKey !== null) {
+                localStorage.setItem('cdratio_gemini_api_key', newKey.trim());
+                if (newKey.trim()) {
+                    showToast('✅ API Key 已安全儲存');
+                } else {
+                    showToast('ℹ️ 已清除 API Key');
+                }
+            }
+        }
+
+        function showToast(msg, duration = 3000) {
+            statusToast.innerText = msg;
+            statusToast.style.display = 'block';
+            setTimeout(() => { statusToast.style.display = 'none'; }, duration);
+        }
+
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
             e.preventDefault();
@@ -222,6 +267,7 @@
             if (!file.type.match('image.*')) return;
             const reader = new FileReader();
             reader.onload = (event) => {
+                rawBase64 = event.target.result;
                 img.onload = () => {
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
@@ -238,10 +284,138 @@
                     updateSegUI();
 
                     resetView();
+
+                    // 若有設定 Key，載入圖片時自動執行 AI 定位
+                    if (getSavedApiKey()) {
+                        runAILocalization();
+                    }
                 }
                 img.src = event.target.result;
             }
             reader.readAsDataURL(file);
+        }
+
+        // 呼叫 Gemini 視覺 API 進行結構定位
+        async function runAILocalization() {
+            let apiKey = getSavedApiKey();
+            if (!apiKey) {
+                openKeySettings();
+                apiKey = getSavedApiKey();
+                if (!apiKey) return;
+            }
+
+            if (!rawBase64) {
+                showToast('請先載入眼底影像');
+                return;
+            }
+
+            showToast('⚡ AI 視神經結構分析中...');
+
+            try {
+                const base64Data = rawBase64.split(',')[1];
+                const mimeType = rawBase64.split(',')[0].split(':')[1].split(';')[0];
+
+                const promptText = `
+You are an expert ophthalmology AI. Analyze this fundus photograph.
+Locate the Optic Disc (OD) and Optic Cup (OC).
+Return ONLY a valid JSON object in normalized coordinates (0.0 to 1.0 relative to image width and height):
+{
+  "disc": {"ymin": float, "xmin": float, "ymax": float, "xmax": float},
+  "cup": {"ymin": float, "xmin": float, "ymax": float, "xmax": float}
+}
+Do not output markdown block backticks or any other text. Only JSON.`;
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inline_data: { mime_type: mimeType, data: base64Data } }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 回應錯誤 (${response.status})`);
+                }
+
+                const data = await response.json();
+                let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!rawText) throw new Error('AI 未能傳回有效分析');
+
+                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const coords = JSON.parse(rawText);
+
+                if (coords.disc && coords.cup) {
+                    applyAICoordinates(coords);
+                    showToast('✨ AI 定位完成！可手動微調');
+                } else {
+                    throw new Error('回傳座標格式不符');
+                }
+
+            } catch (err) {
+                console.error(err);
+                showToast('⚠️ AI 分析未完成，已切換至手動模式');
+            }
+        }
+
+        function applyAICoordinates(coords) {
+            let discImgCx = ((coords.disc.xmin + coords.disc.xmax) / 2) * img.width;
+            let discImgCy = ((coords.disc.ymin + coords.disc.ymax) / 2) * img.height;
+            
+            let discImgRx = (Math.abs(coords.disc.xmax - coords.disc.xmin) / 2) * img.width;
+            let discImgRy = (Math.abs(coords.disc.ymax - coords.disc.ymin) / 2) * img.height;
+
+            let cupImgCx = ((coords.cup.xmin + coords.cup.xmax) / 2) * img.width;
+            let cupImgCy = ((coords.cup.ymin + coords.cup.ymax) / 2) * img.height;
+            let cupImgRx = (Math.abs(coords.cup.xmax - coords.cup.xmin) / 2) * img.width;
+            let cupImgRy = (Math.abs(coords.cup.ymax - coords.cup.ymin) / 2) * img.height;
+
+            // 調整視圖讓 Disc 置中並適當放大
+            let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+            transform.scale = baseScale * imgZoom;
+            transform.x = canvas.width / 2 - discImgCx * transform.scale;
+            transform.y = canvas.height / 2 - discImgCy * transform.scale;
+
+            // 將影像絕對座標轉為畫布上的螢幕座標
+            function toScreen(ix, iy) {
+                return {
+                    x: transform.x + ix * transform.scale,
+                    y: transform.y + iy * transform.scale
+                };
+            }
+
+            let d_top = toScreen(discImgCx, discImgCy - discImgRy);
+            let d_bot = toScreen(discImgCx, discImgCy + discImgRy);
+            let d_left = toScreen(discImgCx - discImgRx, discImgCy);
+            let d_right = toScreen(discImgCx + discImgRx, discImgCy);
+
+            let c_top = toScreen(cupImgCx, cupImgCy - cupImgRy);
+            let c_bot = toScreen(cupImgCx, cupImgCy + cupImgRy);
+            let c_left = toScreen(cupImgCx - cupImgRx, cupImgCy);
+            let c_right = toScreen(cupImgCx + cupImgRx, cupImgCy);
+
+            pts = {
+                d_v1: { x: d_top.x, y: d_top.y, color: dColor },
+                d_v2: { x: d_bot.x, y: d_bot.y, color: dColor },
+                c_v1: { x: c_top.x, y: c_top.y, color: cColor },
+                c_v2: { x: c_bot.x, y: c_bot.y, color: cColor },
+                d_h1: { x: d_left.x, y: d_left.y, color: dColor },
+                d_h2: { x: d_right.x, y: d_right.y, color: dColor },
+                c_h1: { x: c_left.x, y: c_left.y, color: cColor },
+                c_h2: { x: c_right.x, y: c_right.y, color: cColor }
+            };
+
+            showCup = true;
+            showDisc = true;
+            updateSegUI();
+
+            draw();
         }
 
         function toggleSeg(type) {
@@ -829,7 +1003,7 @@
                     } else if (e.ctrlKey || e.metaKey) {
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     } else {
-                        transform.x += transform.y += dy; 
+                        transform.x += dx; transform.y += dy; 
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     }
                     
