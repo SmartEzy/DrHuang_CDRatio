@@ -244,7 +244,7 @@
             }
         }
 
-        function showToast(msg, duration = 3000) {
+        function showToast(msg, duration = 4000) {
             statusToast.innerText = msg;
             statusToast.style.display = 'block';
             setTimeout(() => { statusToast.style.display = 'none'; }, duration);
@@ -295,7 +295,7 @@
             reader.readAsDataURL(file);
         }
 
-        // 呼叫 Gemini 視覺 API 進行結構定位
+        // 呼叫 Gemini 視覺 API 進行結構定位 (已加入穩定版模型與 JSON 強制設定)
         async function runAILocalization() {
             let apiKey = getSavedApiKey();
             if (!apiKey) {
@@ -318,14 +318,14 @@
                 const promptText = `
 You are an expert ophthalmology AI. Analyze this fundus photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
-Return ONLY a valid JSON object in normalized coordinates (0.0 to 1.0 relative to image width and height):
+Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to image width and height) using this exact schema:
 {
-  "disc": {"ymin": float, "xmin": float, "ymax": float, "xmax": float},
-  "cup": {"ymin": float, "xmin": float, "ymax": float, "xmax": float}
-}
-Do not output markdown block backticks or any other text. Only JSON.`;
+  "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
+  "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0}
+}`;
 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+                // 更換為目前最穩定的 gemini-1.5-flash 模型
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -336,31 +336,37 @@ Do not output markdown block backticks or any other text. Only JSON.`;
                                 { text: promptText },
                                 { inline_data: { mime_type: mimeType, data: base64Data } }
                             ]
-                        }]
+                        }],
+                        // 強制規定模型回傳乾淨的 JSON 格式
+                        generationConfig: {
+                            response_mime_type: "application/json"
+                        }
                     })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`API 回應錯誤 (${response.status})`);
+                    const errorText = await response.text();
+                    throw new Error(`API 錯誤碼 ${response.status}: ${errorText}`);
                 }
 
                 const data = await response.json();
                 let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!rawText) throw new Error('AI 未能傳回有效分析');
+                
+                if (!rawText) throw new Error('AI 回傳為空');
 
-                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const coords = JSON.parse(rawText);
 
                 if (coords.disc && coords.cup) {
                     applyAICoordinates(coords);
                     showToast('✨ AI 定位完成！可手動微調');
                 } else {
-                    throw new Error('回傳座標格式不符');
+                    throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
 
             } catch (err) {
-                console.error(err);
-                showToast('⚠️ AI 分析未完成，已切換至手動模式');
+                console.error("AI 分析發生錯誤:", err);
+                // 將具體錯誤訊息顯示在畫面上
+                showToast('⚠️ AI 失敗，已切換手動模式: ' + err.message.substring(0, 50));
             }
         }
 
