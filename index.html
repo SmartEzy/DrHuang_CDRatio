@@ -44,23 +44,53 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* 動作按鈕區：恢復絕對置中對齊 */
-        #actionPanel { width: 110px; gap: 10px; align-items: stretch; padding: 12px; }
-        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
+        /* === 動作面板：絕對置中排版 === */
+        #actionPanel { width: 120px; padding: 12px; gap: 10px; }
         
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
+        .action-item { 
+            position: relative; /* 定位基準 */
+            display: flex; 
+            justify-content: center; /* 內容絕對置中 */
+            align-items: center; 
+            width: 100%; 
+            height: 32px; 
+            box-sizing: border-box; 
+        }
+        
+        .action-text { 
+            font-size: 0.95rem; 
+            font-weight: bold; 
+            color: #fff; 
+            text-align: center;
+        }
+
+        .action-btn { 
+            background: #333; 
+            border: 1px solid #555; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3); 
+            transition: 0.1s; 
+        }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { gap: 8px; cursor: pointer; margin: 0; }
-        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; }
+        .toggle-container { margin: 0; cursor: pointer; }
         
-        .switch { position: relative; width: 44px; height: 24px; display: inline-block; flex-shrink: 0; }
+        /* 開關漂浮在右側，不干擾文字置中 */
+        .switch { 
+            position: absolute; 
+            right: 0; 
+            width: 38px; 
+            height: 22px; 
+            display: inline-block; 
+        }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
-        .slider-toggle:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 22px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+        .slider-toggle:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
         input:checked + .slider-toggle { background-color: #4cd964; }
-        input:checked + .slider-toggle:before { transform: translateX(20px); background-color: #fff; }
+        input:checked + .slider-toggle:before { transform: translateX(16px); background-color: #fff; }
 
+        /* 滑桿區設定 */
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
@@ -94,7 +124,6 @@
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
-            #actionPanel { width: 106px; padding: 10px; } 
             input[type=range] { width: 80px; }
         }
     </style>
@@ -125,27 +154,29 @@
     </div>
 
     <div id="rightControls">
+        <!-- 完美的數學級置中對齊動作面板 -->
         <div class="panel-box" id="actionPanel">
-            <label class="toggle-container action-item">
-                <span>標記</span>
+            <label class="action-item toggle-container">
+                <span class="action-text">標記</span>
                 <div class="switch">
                     <input type="checkbox" id="markerToggle" checked onchange="toggleMarkers(this.checked)">
                     <span class="slider-toggle"></span>
                 </div>
             </label>
-            <div class="action-item">
-                <button class="action-btn" onclick="resetView()">置中</button>
-            </div>
-            <div class="action-item">
-                <button class="action-btn" onclick="document.getElementById('fileInput').click()">換圖</button>
-            </div>
+            <button class="action-item action-btn" onclick="resetView()">
+                <span class="action-text">置中</span>
+            </button>
+            <button class="action-item action-btn" onclick="document.getElementById('fileInput').click()">
+                <span class="action-text">換圖</span>
+            </button>
         </div>
 
         <div class="panel-box" id="sliderPanel">
+            <!-- C/D 最低值防呆設定為 0.05 -->
             <div class="ctrl-group">
                 <span>C/D</span>
                 <button class="step-btn" onclick="stepCD(-0.1)">-</button>
-                <input type="range" id="sliderCD" min="0.00" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
+                <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
                 <button class="step-btn" onclick="stepCD(0.1)">+</button>
             </div>
             <div class="divider"></div>
@@ -206,7 +237,8 @@
         
         let isTouchMode = false; 
         let lastTouchTime = 0; 
-        let showMarkers = true;  
+        let showMarkers = true;
+        let isUpdatingCD = false; // 防衝突鎖定訊號
 
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
@@ -252,6 +284,8 @@
         }
 
         function setCDRatio(ratioVal) {
+            isUpdatingCD = true; // 啟動防衝突鎖
+            
             let targetV = parseFloat(ratioVal);
             if (!showMarkers) {
                 showMarkers = true;
@@ -277,6 +311,8 @@
             pts.c_h2.y = pts.d_h2.y;
 
             draw();
+            
+            isUpdatingCD = false; // 解除防衝突鎖
         }
 
         function stepCD(delta) {
@@ -419,7 +455,8 @@
             document.getElementById('vRatio').innerText = vRatio.toFixed(2);
             document.getElementById('hRatio').innerText = hRatio.toFixed(2);
 
-            if(document.activeElement !== sliderCD) {
+            // 確保不在滑動時才覆寫數值，防止 Focus 遺失時互相覆蓋卡死
+            if(!isUpdatingCD && document.activeElement !== sliderCD) {
                 sliderCD.value = vRatio.toFixed(2);
             }
         }
