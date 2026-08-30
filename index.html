@@ -320,8 +320,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0}
 }`;
 
-                // 【已修正】將模型名稱更新為最新版本的 gemini-1.5-flash-latest
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+                // 【真正正確的模型名稱：gemini-1.5-flash】
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -360,7 +360,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
 
             } catch (err) {
                 console.error("AI 分析發生錯誤:", err);
-                // 【已優化】加長錯誤訊息截取長度，方便直接在畫面上看完整錯誤
                 showToast('⚠️ AI 失敗，已切換手動模式: ' + err.message.substring(0, 150));
             }
         }
