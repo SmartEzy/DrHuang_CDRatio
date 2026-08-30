@@ -38,7 +38,6 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* 動作按鈕區：強制寬度、居中對齊，解決右邊太空及寬度不一問題 */
         #actionPanel { width: 110px; gap: 10px; align-items: stretch; }
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; }
         
@@ -54,7 +53,6 @@
         input:checked + .slider-toggle { background-color: #4cd964; }
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
-        /* 滑桿區設定 */
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
@@ -81,8 +79,8 @@
             #logoText { font-size: 1.1rem; margin-left: 8px; }
             #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
             #instruction { display: none !important; } 
-            #rightControls { right: 15px; bottom: 20px; gap: 8px; }
-            .panel-box { padding: 10px 12px; border-radius: 10px; }
+            #rightControls { right: 15px; bottom: 20px; gap: 10px; }
+            .panel-box { padding: 12px; border-radius: 12px; }
             input[type=range] { width: 80px; }
         }
     </style>
@@ -113,7 +111,6 @@
     </div>
 
     <div id="rightControls">
-        <!-- 窄框對齊的動作區 -->
         <div class="panel-box" id="actionPanel">
             <label class="toggle-container action-item">
                 <span>標記</span>
@@ -130,7 +127,6 @@
             </div>
         </div>
 
-        <!-- 整合型滑桿區 -->
         <div class="panel-box" id="sliderPanel">
             <div class="ctrl-group">
                 <span>C/D</span>
@@ -240,9 +236,6 @@
             draw();
         }
 
-        // ==========================================
-        // 核心解矛盾邏輯：以 Vertical (V) 為基準的等比例縮放
-        // ==========================================
         function setCDRatio(ratioVal) {
             let targetV = parseFloat(ratioVal);
             if (!showMarkers) {
@@ -255,21 +248,17 @@
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
             let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
 
-            // 取得目前的垂直比例
             let currentV = (discV === 0) ? 0 : (cupV / discV);
-            if (currentV === 0) currentV = 0.5; // 避免除以零的防呆機制
+            if (currentV === 0) currentV = 0.5; 
 
-            // 計算縮放係數 (要放大或縮小多少倍才能達到目標的 V)
             let scaleFactor = targetV / currentV;
 
-            // 垂直方向套用縮放係數
             let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
             pts.c_v1.y = dv_cy - (cupV / 2) * scaleFactor;
             pts.c_v1.x = pts.d_v1.x; 
             pts.c_v2.y = dv_cy + (cupV / 2) * scaleFactor;
             pts.c_v2.x = pts.d_v2.x; 
 
-            // 水平方向也套用「一模一樣的縮放係數」，完美保留醫生手動拉出的橢圓形狀！
             let dh_cx = (pts.d_h1.x + pts.d_h2.x) / 2;
             pts.c_h1.x = dh_cx - (cupH / 2) * scaleFactor;
             pts.c_h1.y = pts.d_h1.y; 
@@ -279,7 +268,6 @@
             draw();
         }
 
-        // C/D Ratio 微調按鈕邏輯 (每次精準跳動 0.1)
         function stepCD(delta) {
             let newVal = parseFloat(sliderCD.value) + delta;
             if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
@@ -383,7 +371,6 @@
             let dRy = baseScaledMin * mkrZoom * 0.055; 
             let dRx = baseScaledMin * mkrZoom * 0.045; 
             
-            // 讀取當前 C/D 滑桿的比例值，初始化標記
             let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
             let cRy = dRy * currentCDRatio; 
             let cRx = dRx * currentCDRatio; 
@@ -421,7 +408,6 @@
             document.getElementById('vRatio').innerText = vRatio.toFixed(2);
             document.getElementById('hRatio').innerText = hRatio.toFixed(2);
 
-            // 【雙向連動】當您拖曳畫面上的標記時，C/D 滑桿會自動對齊最關鍵的 "垂直(V)" 比例！
             if(document.activeElement !== sliderCD) {
                 sliderCD.value = vRatio.toFixed(2);
             }
@@ -503,6 +489,55 @@
             }
             context.setLineDash([]);
 
+            // === 繪製十等份紅線尺標 ===
+            context.save();
+            context.strokeStyle = 'rgba(255, 59, 48, 0.3)';
+            context.lineWidth = 1.5;
+            context.beginPath();
+            context.moveTo(pts.d_v1.x, pts.d_v1.y); context.lineTo(pts.d_v2.x, pts.d_v2.y);
+            context.moveTo(pts.d_h1.x, pts.d_h1.y); context.lineTo(pts.d_h2.x, pts.d_h2.y);
+            context.stroke();
+
+            for (let i = 1; i <= 9; i++) {
+                let f = i / 10;
+                let isCenter = (i === 5);
+                let tickLen = isCenter ? 8 : 4; 
+                
+                // 垂直軸十等份
+                let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
+                let vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
+                
+                context.beginPath();
+                context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                context.lineWidth = 3;
+                context.moveTo(vx - tickLen, vy); context.lineTo(vx + tickLen, vy);
+                context.stroke();
+                
+                context.beginPath();
+                context.strokeStyle = dColor;
+                context.lineWidth = 1.5;
+                context.moveTo(vx - tickLen, vy); context.lineTo(vx + tickLen, vy);
+                context.stroke();
+
+                // 水平軸十等份
+                let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x);
+                let hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
+                
+                context.beginPath();
+                context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                context.lineWidth = 3;
+                context.moveTo(hx, hy - tickLen); context.lineTo(hx, hy + tickLen);
+                context.stroke();
+
+                context.beginPath();
+                context.strokeStyle = dColor;
+                context.lineWidth = 1.5;
+                context.moveTo(hx, hy - tickLen); context.lineTo(hx, hy + tickLen);
+                context.stroke();
+            }
+            context.restore();
+
+            // 原本的端點標記 (綠與紅)
             function drawDash(p, key) {
                 let dashLen = 14; 
                 context.beginPath();
