@@ -39,7 +39,6 @@
         
         #statusToast { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; color: #4cd964; padding: 10px 20px; border-radius: 20px; font-size: 0.9rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; text-align: center; }
 
-        /* 【新增】載入中動畫遮罩 */
         #loadingOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.65); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
@@ -117,7 +116,6 @@
 </head>
 <body>
 
-    <!-- 【新增】載入中動畫遮罩 -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text">⚡ 影像上傳與 AI 分析中，請稍候...</div>
@@ -244,23 +242,26 @@
         let showDisc = true;  
 
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
-        function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3-flash-preview'; }
+        function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
+        // 【修改】將模型設定移至第一步，API Key 移至第二步
         function openSystemSettings() {
-            let currentKey = getSavedApiKey();
-            let newKey = prompt('[步驟 1/2]\n請貼上您的 Google Gemini API Key：\n(金鑰僅儲存在本地端，安全無虞)', currentKey);
+            let currentModel = getSavedModelName();
+            let newModel = prompt('[步驟 1/2]\n請確認要使用的 AI 模型名稱：\n(建議直接使用預設，速度最快)', currentModel);
             
-            if (newKey !== null) {
-                localStorage.setItem('cdratio_gemini_api_key', newKey.trim());
-                
-                let currentModel = getSavedModelName();
-                let newModel = prompt('[步驟 2/2]\n請確認要使用的 AI 模型名稱：\n(未來若 Google 推出新版，可直接在此修改)', currentModel);
-                
-                if (newModel !== null && newModel.trim() !== '') {
+            if (newModel !== null) {
+                if (newModel.trim() !== '') {
                     localStorage.setItem('cdratio_gemini_model', newModel.trim());
+                }
+                
+                let currentKey = getSavedApiKey();
+                let newKey = prompt('[步驟 2/2]\n請貼上您的 Google Gemini API Key：\n(若無更改請直接按確定保留原狀)', currentKey);
+                
+                if (newKey !== null) {
+                    if (newKey.trim() !== '') {
+                        localStorage.setItem('cdratio_gemini_api_key', newKey.trim());
+                    }
                     showToast('✅ 系統設定已更新並儲存！');
-                } else {
-                    showToast('✅ API Key 已更新');
                 }
             }
         }
@@ -328,7 +329,6 @@
                 return;
             }
 
-            // 【新增】開啟全螢幕載入遮罩
             loadingOverlay.style.display = 'flex';
             let modelName = getSavedModelName();
 
@@ -336,7 +336,6 @@
                 const base64Data = rawBase64.split(',')[1];
                 const mimeType = rawBase64.split(',')[0].split(':')[1].split(';')[0];
 
-                // 【優化】加強醫學解剖特徵的 Prompt 指令，引導 AI 更精準尋找
                 const promptText = `
 You are an expert ophthalmologist AI. Analyze this fundus/OCT photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
@@ -390,7 +389,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                 console.error("AI 分析發生錯誤:", err);
                 showToast('⚠️ AI 失敗，已切換手動模式: ' + err.message.substring(0, 150));
             } finally {
-                // 【新增】無論成功或失敗，都關閉載入遮罩
                 loadingOverlay.style.display = 'none';
             }
         }
