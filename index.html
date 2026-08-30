@@ -27,18 +27,15 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        /* 說明區：更緊湊的冒號對齊 */
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
         #instruction td { padding: 3px 2px; vertical-align: middle; }
         #instruction td:first-child { text-align: right; }
         #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
 
-        /* 右下角控制區容器：兩個獨立面板分離 */
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 16px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; }
         
-        /* 動作按鈕區 (直排靠右、小巧尺寸、統一高度) */
         #actionPanel { align-items: flex-end; gap: 10px; min-width: auto; }
         .action-item { display: flex; align-items: center; justify-content: flex-end; height: 28px; }
         
@@ -54,7 +51,6 @@
         input:checked + .slider-toggle { background-color: #4cd964; }
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
-        /* 滑桿區 */
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: right; font-weight: bold; }
@@ -88,7 +84,6 @@
         <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
     </div>
 
-    <!-- 拖拉背景換圖 -->
     <div id="dropZone" onclick="document.getElementById('fileInput').click()">
         點擊畫面選擇圖片，或將眼底圖拖曳至視窗內
         <input type="file" id="fileInput" accept="image/*" />
@@ -108,7 +103,6 @@
     </div>
 
     <div id="rightControls">
-        <!-- 上方：動作面板 (直排靠右、高度統一) -->
         <div class="panel-box" id="actionPanel">
             <label class="toggle-container action-item">
                 <span>標記</span>
@@ -125,7 +119,6 @@
             </div>
         </div>
 
-        <!-- 下方：滑桿面板 -->
         <div class="panel-box" id="sliderPanel">
             <div class="ctrl-group">
                 <span>圖片</span>
@@ -152,7 +145,6 @@
         const instruction = document.getElementById('instruction');
         const rightControls = document.getElementById('rightControls');
         const markerToggle = document.getElementById('markerToggle');
-        const logoText = document.getElementById('logoText');
         
         const sliderImg = document.getElementById('sliderImg');
         const sliderMkr = document.getElementById('sliderMkr');
@@ -197,7 +189,7 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 img.onload = () => {
-                    logoText.style.display = 'none';
+                    // 保留 Logo 旁的字樣，不再隱藏 logoText
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
@@ -224,24 +216,24 @@
         }
 
         // ==========================================
-        // 演算法大升級：解剖學導向 (水平帶加權) AI 尋跡
+        // 終極尋跡演算法：區塊面積平均掃描 (解決新月形反光干擾)
         // ==========================================
         function detectBrightCenter(image) {
             try {
                 const tempCanvas = document.createElement('canvas');
                 const tCtx = tempCanvas.getContext('2d');
                 
-                // 降噪模糊
-                const scale = 40 / image.width;
-                tempCanvas.width = 40; 
+                // 縮小圖片提升運算速度與天然降噪
+                const scale = 64 / image.width;
+                tempCanvas.width = 64; 
                 tempCanvas.height = Math.floor(image.height * scale);
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
-                // 第一步：找眼球真實邊界 Bounding Box
+                // 1. 抓取真實眼底邊界
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
                 for (let i = 0; i < imgData.length; i += 4) {
-                    if (imgData[i] > 10) { 
+                    if (imgData[i] > 15) { 
                         let px = (i / 4) % tempCanvas.width;
                         let py = Math.floor((i / 4) / tempCanvas.width);
                         if (px < minX) minX = px; if (px > maxX) maxX = px;
@@ -253,36 +245,57 @@
                 let eyeCy = (minY + maxY) / 2;
                 let eyeRx = (maxX - minX) / 2;
                 let eyeRy = (maxY - minY) / 2;
+                let eyeR = Math.min(eyeRx, eyeRy);
+                
+                if (eyeR <= 0) return null;
 
-                let maxBrightness = 0; 
+                // 2. 建立亮度矩陣 (提取亮度特徵)
+                let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
+                for (let y = 0; y < tempCanvas.height; y++) {
+                    for (let x = 0; x < tempCanvas.width; x++) {
+                        let idx = (y * tempCanvas.width + x) * 4;
+                        bMap[y * tempCanvas.width + x] = imgData[idx]*0.3 + imgData[idx+1]*0.59 + imgData[idx+2]*0.11;
+                    }
+                }
+
+                let maxScore = -1; 
                 let bestX = eyeCx; 
                 let bestY = eyeCy;
                 
-                // 第二步：基於解剖學位置的加權掃描
-                for (let y = minY; y <= maxY; y++) {
-                    for (let x = minX; x <= maxX; x++) {
-                        let idx = (y * tempCanvas.width + x) * 4;
-                        let brightness = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
-                        
-                        // 計算標準化的 X, Y 距離 (0 ~ 1)
-                        let nx = Math.abs(x - eyeCx) / eyeRx; 
-                        let ny = Math.abs(y - eyeCy) / eyeRy; 
-                        
-                        // 絕對封鎖：拒絕極端的邊緣環 (半徑 > 85%)，徹底根除上下左右的邊界反光
-                        let distFromCenter = Math.sqrt(nx*nx + ny*ny);
-                        if (distFromCenter > 0.85) continue; 
-                        
-                        // 【關鍵加權】Y軸：視神經盤只會在水平線上！只要稍微偏離水平中心，立刻重罰分數
-                        let yWeight = Math.max(0, 1 - Math.pow(ny / 0.4, 2)); 
-                        
-                        // 【關鍵加權】X軸：視神經盤可能在左、中、右。給予極高的寬容度，直到靠近邊緣才打折
-                        let xWeight = Math.max(0, 1 - Math.pow(nx / 0.9, 2));
-                        
-                        let finalWeight = yWeight * xWeight;
-                        let weightedBrightness = brightness * finalWeight;
+                // 預估視神經盤的大小 (約為半徑的 15%)，做為掃描探照燈的半徑
+                let winR = Math.max(2, Math.floor(eyeR * 0.15));
 
-                        if (weightedBrightness > maxBrightness) { 
-                            maxBrightness = weightedBrightness; 
+                // 3. 用「虛擬探照燈」掃描，計算區塊平均亮度
+                for (let y = minY + winR; y <= maxY - winR; y++) {
+                    for (let x = minX + winR; x <= maxX - winR; x++) {
+                        let dx = x - eyeCx;
+                        let dy = y - eyeCy;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        // 拒絕極度靠近邊緣的點 (避開新月形邊界反光)
+                        if (dist > eyeR * 0.88) continue; 
+                        
+                        // 計算探照燈範圍內的平均亮度
+                        let sum = 0, count = 0;
+                        for(let wy = -winR; wy <= winR; wy++) {
+                            for(let wx = -winR; wx <= winR; wx++) {
+                                if(wx*wx + wy*wy <= winR*winR) {
+                                    sum += bMap[(y+wy)*tempCanvas.width + (x+wx)];
+                                    count++;
+                                }
+                            }
+                        }
+                        let localAvg = sum / count;
+                        
+                        // Y 軸懲罰：視神經盤應在水平中線上
+                        let ny = Math.abs(dy) / eyeR; 
+                        let yWeight = Math.max(0.1, 1 - Math.pow(ny / 0.4, 2)); 
+                        
+                        // 最終得分：大面積平均亮度 × 水平線加權
+                        let score = localAvg * yWeight;
+
+                        if (score > maxScore) { 
+                            maxScore = score; 
                             bestX = x; 
                             bestY = y; 
                         }
