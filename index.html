@@ -26,20 +26,24 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
+        /* 說明區：精簡文字、對齊冒號 */
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
-        #instruction td { padding: 3px 5px; vertical-align: middle; }
+        #instruction td { padding: 3px 4px; vertical-align: middle; }
         #instruction td:first-child { text-align: right; }
-        #instruction td:nth-child(2) { font-weight: bold; }
+        #instruction td:nth-child(2) { font-weight: bold; text-align: center; }
 
-        #controlPanel { display: none; position: absolute; right: 20px; bottom: 20px; background: rgba(0,0,0,0.75); padding: 16px; border-radius: 14px; z-index: 10; flex-direction: column; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); min-width: 180px; }
+        /* 右下角控制區容器 (上下兩塊分離) */
+        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; gap: 14px; z-index: 10; }
+        .panel-box { background: rgba(0,0,0,0.75); padding: 16px; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; }
         
-        .top-actions { display: flex; gap: 8px; width: 100%; }
-        .action-btn { flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; }
+        /* 動作按鈕區 (直排) */
+        #actionPanel { gap: 12px; min-width: 110px; }
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 10px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; width: 100%; }
         .action-btn:active { background: #222; transform: scale(0.97); }
 
-        .toggle-container { display: flex; align-items: center; justify-content: flex-start; gap: 12px; cursor: pointer; margin-top: 4px; }
-        .toggle-container span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; }
+        .toggle-container { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; }
         .switch { position: relative; width: 42px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
@@ -47,8 +51,8 @@
         input:checked + .slider-toggle { background-color: #4cd964; }
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
-        .divider { height: 1px; background: #555; margin: 4px 0; width: 100%; }
-
+        /* 滑桿區 */
+        #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; }
         
@@ -68,7 +72,10 @@
             #logoText { font-size: 1.1rem; margin-left: 8px; }
             #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
             #instruction { display: none !important; } 
-            #controlPanel { right: 15px; bottom: 25px; padding: 12px 14px; gap: 10px; }
+            #rightControls { right: 15px; bottom: 20px; gap: 10px; }
+            .panel-box { padding: 12px 14px; border-radius: 12px; }
+            #actionPanel { gap: 10px; }
+            .action-btn { padding: 8px; font-size: 0.9rem; }
             input[type=range] { width: 100px; }
         }
     </style>
@@ -80,7 +87,7 @@
         <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
     </div>
 
-    <!-- 點擊背景任一處觸發換圖 -->
+    <!-- 全域換圖 -->
     <div id="dropZone" style="pointer-events: auto;" onclick="document.getElementById('fileInput').click()">
         點擊畫面選擇圖片，或將眼底圖拖曳至視窗內
         <input type="file" id="fileInput" accept="image/*" />
@@ -93,39 +100,41 @@
     
     <div id="instruction">
         <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>圖片 & 尺標 (同步)</td></tr>
-            <tr><td><b>Shift + 操作</b></td><td>:</td><td>單獨圖片</td></tr>
-            <tr><td><b>Ctrl + 操作</b></td><td>:</td><td>單獨尺標</td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>同步</td></tr>
+            <tr><td><b>Shift + 操作</b></td><td>:</td><td>圖片</td></tr>
+            <tr><td><b>Ctrl + 操作</b></td><td>:</td><td>尺標</td></tr>
         </table>
     </div>
 
-    <div id="controlPanel">
-        <div class="top-actions">
-            <button class="action-btn" onclick="document.getElementById('fileInput').click()">📁 換圖</button>
+    <!-- 雙板塊控制區 -->
+    <div id="rightControls">
+        <!-- 上方：動作面板 -->
+        <div class="panel-box" id="actionPanel">
+            <label class="toggle-container">
+                <span>標記</span>
+                <div class="switch">
+                    <input type="checkbox" id="markerToggle" checked onchange="toggleMarkers(this.checked)">
+                    <span class="slider-toggle"></span>
+                </div>
+            </label>
             <button class="action-btn" onclick="resetView()">⌖ 置中</button>
+            <button class="action-btn" onclick="document.getElementById('fileInput').click()">📁 換圖</button>
         </div>
-        
-        <label class="toggle-container">
-            <span>標記</span>
-            <div class="switch">
-                <input type="checkbox" id="markerToggle" checked onchange="toggleMarkers(this.checked)">
-                <span class="slider-toggle"></span>
+
+        <!-- 下方：滑桿面板 -->
+        <div class="panel-box" id="sliderPanel">
+            <div class="ctrl-group">
+                <span>圖片</span>
+                <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
             </div>
-        </label>
-
-        <div class="divider"></div>
-
-        <div class="ctrl-group">
-            <span>圖片</span>
-            <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
-        </div>
-        <div class="ctrl-group">
-            <span>尺標</span>
-            <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
-        </div>
-        <div class="ctrl-group">
-            <span>同步</span>
-            <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
+            <div class="ctrl-group">
+                <span>尺標</span>
+                <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
+            </div>
+            <div class="ctrl-group">
+                <span>同步</span>
+                <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
+            </div>
         </div>
     </div>
 
@@ -137,7 +146,7 @@
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
         const instruction = document.getElementById('instruction');
-        const controlPanel = document.getElementById('controlPanel');
+        const rightControls = document.getElementById('rightControls');
         const markerToggle = document.getElementById('markerToggle');
         const logoText = document.getElementById('logoText');
         
@@ -166,15 +175,10 @@
         let isTouchMode = false; 
         let showMarkers = true;  
 
-        // ==========================================
-        // 升級 1：全域拖曳換圖 (Global Drag & Drop)
-        // ==========================================
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
             e.preventDefault();
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                handleImage(e.dataTransfer.files[0]);
-            }
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleImage(e.dataTransfer.files[0]);
         });
 
         fileInput.addEventListener('change', (e) => {
@@ -193,7 +197,7 @@
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
-                    controlPanel.style.display = 'flex';
+                    rightControls.style.display = 'flex';
                     
                     if (window.innerWidth > 600) instruction.style.display = 'block';
                     
@@ -216,23 +220,24 @@
         }
 
         // ==========================================
-        // 升級 3：眼底邊界偵測 AI (Fundus Bounding Box)
+        // 修復版演算法：柔性降噪，避免絕對遮罩漏抓邊緣
         // ==========================================
         function detectBrightCenter(image) {
             try {
                 const tempCanvas = document.createElement('canvas');
                 const tCtx = tempCanvas.getContext('2d');
                 
-                const scale = 50 / image.width;
-                tempCanvas.width = 50; 
+                // 大幅降噪：縮小至寬度 40px，細小的月牙反光會被融合掉，而大塊 Disc 會留存
+                const scale = 40 / image.width;
+                tempCanvas.width = 40; 
                 tempCanvas.height = Math.floor(image.height * scale);
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
-                // 第一階段：找出真正眼球的邊界 (Bounding Box) 避開黑邊
+                // 找出眼球背景輪廓
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
                 for (let i = 0; i < imgData.length; i += 4) {
-                    if (imgData[i] > 15) { // 只要紅色通道大於 15 就視為眼球範圍
+                    if (imgData[i] > 10) { 
                         let px = (i / 4) % tempCanvas.width;
                         let py = Math.floor((i / 4) / tempCanvas.width);
                         if (px < minX) minX = px; if (px > maxX) maxX = px;
@@ -244,8 +249,8 @@
                 let eyeCy = (minY + maxY) / 2;
                 let eyeR = Math.min(maxX - minX, maxY - minY) / 2;
                 
-                // 第二階段：設定安全掃描區，嚴格剃除外圍 35% 範圍 (防護邊緣曝光干擾)
-                let searchR = eyeR * 0.65; 
+                // 只剔除最極端的 5% 邊界 (用來防禦最外圍的高亮白框)
+                let searchR = eyeR * 0.95; 
 
                 let maxBrightness = 0; 
                 let bestX = eyeCx; 
@@ -257,14 +262,13 @@
                         let dy = y - eyeCy;
                         let dist = Math.sqrt(dx*dx + dy*dy);
                         
-                        // 只要超過安全半徑，連掃都不掃！
                         if (dist > searchR) continue; 
                         
                         let idx = (y * tempCanvas.width + x) * 4;
                         let brightness = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
                         
-                        // 越靠近眼球中心，權重越高，確保鎖定 Disc
-                        let centerBias = 1 - (dist / searchR) * 0.3; 
+                        // 柔性中心加權：邊緣稍微打折，如果邊緣有小反光，競爭力會輸給內側的大盤
+                        let centerBias = 1 - (dist / eyeR) * 0.25; 
                         let weightedBrightness = brightness * centerBias;
 
                         if (weightedBrightness > maxBrightness) { 
@@ -512,21 +516,18 @@
             return null; 
         }
 
-        // ==========================================
-        // 升級 2：操作邏輯統一化 (滾輪與拖曳均適用修飾鍵)
-        // ==========================================
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
             let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
             let mouseX = e.clientX; let mouseY = e.clientY;
 
-            if (e.shiftKey) { // Shift = 單獨圖片
+            if (e.shiftKey) { 
                 applyZoomImg(zoomFactor, mouseX, mouseY);
                 imgZoom *= zoomFactor; sliderImg.value = imgZoom;
-            } else if (e.ctrlKey || e.metaKey) { // Ctrl = 單獨尺標
+            } else if (e.ctrlKey || e.metaKey) { 
                 applyZoomMkr(zoomFactor, mouseX, mouseY);
                 mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
-            } else { // 預設 = 同步
+            } else { 
                 applyZoomImg(zoomFactor, mouseX, mouseY);
                 applyZoomMkr(zoomFactor, mouseX, mouseY);
                 imgZoom *= zoomFactor; sliderImg.value = imgZoom;
@@ -566,12 +567,11 @@
             } else if (isDraggingCanvas) {
                 let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
                 
-                // 拖曳背景時也遵從統一規則
-                if (e.shiftKey) { // 單獨拖曳圖片
+                if (e.shiftKey) { 
                     transform.x += dx; transform.y += dy; 
-                } else if (e.ctrlKey || e.metaKey) { // 單獨拖曳尺標
+                } else if (e.ctrlKey || e.metaKey) { 
                     for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
-                } else { // 同步拖曳
+                } else { 
                     transform.x += dx; transform.y += dy; 
                     for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                 }
@@ -617,7 +617,6 @@
                     lastMouse = { x: mouseX, y: mouseY };
                     draw();
                 } else if (isDraggingCanvas) {
-                    // 手機觸控通常沒有鍵盤，預設為同步拖曳
                     let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
                     
                     if (e.shiftKey) { 
