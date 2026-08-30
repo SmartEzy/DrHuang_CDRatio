@@ -38,14 +38,14 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* 動作按鈕區：強制寬度貼齊最寬元素(Switch開關)，實現極窄滿版框 */
-        #actionPanel { gap: 10px; width: fit-content; align-self: flex-end; }
-        .action-item { display: flex; align-items: center; justify-content: space-between; height: 28px; width: 100%; }
+        /* 動作按鈕區：強制寬度、居中對齊，解決右邊太空及寬度不一問題 */
+        #actionPanel { width: 110px; gap: 10px; align-items: stretch; }
+        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; }
         
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { gap: 12px; cursor: pointer; }
+        .toggle-container { gap: 8px; cursor: pointer; }
         .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; }
         .switch { position: relative; width: 42px; height: 24px; display: inline-block; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -55,13 +55,15 @@
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
         /* 滑桿區設定 */
-        #cdPanel, #sliderPanel { gap: 12px; }
+        #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
         
         .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
         .step-btn:hover { background: rgba(255,255,255,0.25); }
         .step-btn:active { transform: scale(0.9); background: #4cd964; color: #111; }
+        
+        .divider { height: 1px; background: #555; margin: 2px 0; width: 100%; }
 
         input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
         input[type=range]:focus { outline: none; }
@@ -79,8 +81,8 @@
             #logoText { font-size: 1.1rem; margin-left: 8px; }
             #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
             #instruction { display: none !important; } 
-            #rightControls { right: 15px; bottom: 20px; gap: 10px; }
-            .panel-box { padding: 12px; border-radius: 12px; }
+            #rightControls { right: 15px; bottom: 20px; gap: 8px; }
+            .panel-box { padding: 10px 12px; border-radius: 10px; }
             input[type=range] { width: 80px; }
         }
     </style>
@@ -111,7 +113,7 @@
     </div>
 
     <div id="rightControls">
-        <!-- 動作區：窄框切齊排版 -->
+        <!-- 窄框對齊的動作區 -->
         <div class="panel-box" id="actionPanel">
             <label class="toggle-container action-item">
                 <span>標記</span>
@@ -128,18 +130,15 @@
             </div>
         </div>
 
-        <!-- C/D Ratio 專屬滑桿區 -->
-        <div class="panel-box" id="cdPanel">
+        <!-- 整合型滑桿區 -->
+        <div class="panel-box" id="sliderPanel">
             <div class="ctrl-group">
                 <span>C/D</span>
                 <button class="step-btn" onclick="stepCD(-0.1)">-</button>
-                <input type="range" id="sliderCD" min="0.0" max="1.0" step="0.1" value="0.5" oninput="setCDRatio(this.value)">
+                <input type="range" id="sliderCD" min="0.00" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
                 <button class="step-btn" onclick="stepCD(0.1)">+</button>
             </div>
-        </div>
-
-        <!-- 畫面與尺標縮放滑桿區 -->
-        <div class="panel-box" id="sliderPanel">
+            <div class="divider"></div>
             <div class="ctrl-group">
                 <span>圖片</span>
                 <button class="step-btn" onclick="stepZoom('Img', -0.1)">-</button>
@@ -241,36 +240,51 @@
             draw();
         }
 
-        // C/D Ratio 滑桿變動事件 (連動畫面標記)
+        // ==========================================
+        // 核心解矛盾邏輯：以 Vertical (V) 為基準的等比例縮放
+        // ==========================================
         function setCDRatio(ratioVal) {
-            let ratio = parseFloat(ratioVal);
+            let targetV = parseFloat(ratioVal);
             if (!showMarkers) {
                 showMarkers = true;
                 markerToggle.checked = true;
             }
+
+            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
+            let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
+            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
+            let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
+
+            // 取得目前的垂直比例
+            let currentV = (discV === 0) ? 0 : (cupV / discV);
+            if (currentV === 0) currentV = 0.5; // 避免除以零的防呆機制
+
+            // 計算縮放係數 (要放大或縮小多少倍才能達到目標的 V)
+            let scaleFactor = targetV / currentV;
+
+            // 垂直方向套用縮放係數
             let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
-            let dv_h = Math.abs(pts.d_v1.y - pts.d_v2.y);
-            pts.c_v1.y = dv_cy - (dv_h / 2) * ratio;
+            pts.c_v1.y = dv_cy - (cupV / 2) * scaleFactor;
             pts.c_v1.x = pts.d_v1.x; 
-            pts.c_v2.y = dv_cy + (dv_h / 2) * ratio;
+            pts.c_v2.y = dv_cy + (cupV / 2) * scaleFactor;
             pts.c_v2.x = pts.d_v2.x; 
 
+            // 水平方向也套用「一模一樣的縮放係數」，完美保留醫生手動拉出的橢圓形狀！
             let dh_cx = (pts.d_h1.x + pts.d_h2.x) / 2;
-            let dh_w = Math.abs(pts.d_h1.x - pts.d_h2.x);
-            pts.c_h1.x = dh_cx - (dh_w / 2) * ratio;
+            pts.c_h1.x = dh_cx - (cupH / 2) * scaleFactor;
             pts.c_h1.y = pts.d_h1.y; 
-            pts.c_h2.x = dh_cx + (dh_w / 2) * ratio;
+            pts.c_h2.x = dh_cx + (cupH / 2) * scaleFactor;
             pts.c_h2.y = pts.d_h2.y;
 
             draw();
         }
 
-        // C/D Ratio 微調按鈕邏輯
+        // C/D Ratio 微調按鈕邏輯 (每次精準跳動 0.1)
         function stepCD(delta) {
             let newVal = parseFloat(sliderCD.value) + delta;
             if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
             if (newVal > parseFloat(sliderCD.max)) newVal = parseFloat(sliderCD.max);
-            sliderCD.value = newVal.toFixed(1);
+            sliderCD.value = newVal.toFixed(2);
             setCDRatio(sliderCD.value);
         }
 
@@ -370,7 +384,7 @@
             let dRx = baseScaledMin * mkrZoom * 0.045; 
             
             // 讀取當前 C/D 滑桿的比例值，初始化標記
-            let currentCDRatio = parseFloat(sliderCD.value) || 0.5;
+            let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
             let cRy = dRy * currentCDRatio; 
             let cRx = dRx * currentCDRatio; 
             
@@ -407,10 +421,9 @@
             document.getElementById('vRatio').innerText = vRatio.toFixed(2);
             document.getElementById('hRatio').innerText = hRatio.toFixed(2);
 
-            // 【雙向連動】如果使用者正在畫面拖曳標記，動態將平均比例同步更新回 C/D 滑桿 UI
+            // 【雙向連動】當您拖曳畫面上的標記時，C/D 滑桿會自動對齊最關鍵的 "垂直(V)" 比例！
             if(document.activeElement !== sliderCD) {
-                let avgRatio = (vRatio + hRatio) / 2;
-                sliderCD.value = avgRatio.toFixed(2);
+                sliderCD.value = vRatio.toFixed(2);
             }
         }
 
