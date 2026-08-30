@@ -14,7 +14,6 @@
         body { 
             font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #111; margin: 0; padding: 0; color: white; height: 100vh; overflow: hidden; justify-content: center; 
             touch-action: none; 
-            /* 阻擋 iOS 原生長按選單與文字選取，確保拖曳順暢不中斷 */
             -webkit-touch-callout: none; 
             -webkit-user-select: none; 
             user-select: none; 
@@ -45,14 +44,15 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        #actionPanel { width: 106px; gap: 10px; align-items: stretch; padding: 12px 14px; }
+        /* 動作按鈕區：恢復絕對置中對齊 */
+        #actionPanel { width: 110px; gap: 10px; align-items: stretch; padding: 12px; }
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
         .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { gap: 8px; cursor: pointer; margin: 0; justify-content: center; }
-        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; text-align: center; }
+        .toggle-container { gap: 8px; cursor: pointer; margin: 0; }
+        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; }
         
         .switch { position: relative; width: 44px; height: 24px; display: inline-block; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
