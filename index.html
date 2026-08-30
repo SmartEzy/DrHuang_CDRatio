@@ -14,6 +14,7 @@
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #111; margin: 0; padding: 0; color: white; height: 100vh; overflow: hidden; justify-content: center; touch-action: none; }
         
         #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
+        #logoText { margin-left: 12px; color: white; font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
         
         #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; }
         #fileInput { display: none; }
@@ -24,10 +25,16 @@
         .val { font-weight: bold; margin: 0 6px; color: #fff; }
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         
-        #instruction { display: none; position: absolute; bottom: 75px; left: 20px; color: #bbb; font-size: 0.85rem; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 10px; line-height: 1.5; z-index: 10; }
-        
-        #resetBtn { display: none; position: absolute; left: 20px; bottom: 20px; background: rgba(0,0,0,0.75); color: #fff; border: 1px solid #555; padding: 12px 20px; border-radius: 12px; font-size: 1.1rem; z-index: 10; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold; }
-        #resetBtn:active { background: #333; }
+        /* 快捷鍵說明區：完美對齊、移至左下角按鈕群上方 */
+        #instruction { display: none; position: absolute; bottom: 85px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
+        #instruction table { border-collapse: collapse; }
+        #instruction td { padding: 3px 6px; vertical-align: middle; }
+        #instruction td:nth-child(2) { text-align: center; font-weight: bold; }
+
+        /* 左下角：操作按鈕群組 */
+        #actionBtns { display: none; position: absolute; left: 20px; bottom: 20px; gap: 12px; z-index: 10; }
+        .action-btn { background: rgba(0,0,0,0.75); color: #fff; border: 1px solid #555; padding: 12px 18px; border-radius: 12px; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold; transition: 0.1s; }
+        .action-btn:active { background: #333; transform: scale(0.95); }
 
         #controlPanel { display: none; position: absolute; right: 20px; bottom: 20px; background: rgba(0,0,0,0.75); padding: 15px 20px; border-radius: 12px; z-index: 10; flex-direction: column; gap: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
         .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -46,18 +53,26 @@
         @media (max-width: 600px) {
             #logo { top: 15px; left: 15px; }
             #logo img { height: 28px !important; }
-            #infoBar { top: 65px; font-size: 1.1rem; padding: 8px 16px; }
+            #logoText { font-size: 1.2rem; margin-left: 8px; }
+            
+            /* 手機版：將 C/D 列移到右上角平行位置，避免擋住圖片 */
+            #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
+            
             #instruction { display: none !important; } 
             #controlPanel { right: 15px; bottom: 25px; padding: 12px 15px; gap: 14px; }
             input[type=range] { width: 110px; }
-            #resetBtn { left: 15px; bottom: 25px; padding: 10px 16px; font-size: 1rem; }
+            
+            #actionBtns { left: 15px; bottom: 25px; gap: 8px; }
+            .action-btn { padding: 10px 12px; font-size: 0.95rem; }
         }
     </style>
 </head>
 <body>
 
+    <!-- Logo 與動態標題 -->
     <div id="logo">
-        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);"> 
+        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
+        <span id="logoText">CDRatio</span>
     </div>
 
     <div id="dropZone" onclick="document.getElementById('fileInput').click()">
@@ -71,11 +86,21 @@
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
     
+    <!-- 對齊版快捷鍵說明 -->
     <div id="instruction">
-        <b>滾輪</b>：縮圖<br><b>Shift+滾輪</b>：縮尺標<br><b>Ctrl+滾輪</b>：同步
+        <table>
+            <tr><td><b>滾輪</b></td><td>：</td><td>縮圖</td></tr>
+            <tr><td><b>Shift+滾輪</b></td><td>：</td><td>縮尺標</td></tr>
+            <tr><td><b>Ctrl+滾輪</b></td><td>：</td><td>同步</td></tr>
+        </table>
     </div>
 
-    <button id="resetBtn" onclick="resetView()">⌖ 置中</button>
+    <!-- 左下角：全功能按鈕群組 -->
+    <div id="actionBtns">
+        <button class="action-btn" onclick="document.getElementById('fileInput').click()">📁 換圖</button>
+        <button class="action-btn" onclick="resetView()">⌖ 置中</button>
+        <button class="action-btn" id="toggleBtn" onclick="toggleMarkers()">👁 標記</button>
+    </div>
 
     <div id="controlPanel">
         <div class="ctrl-group">
@@ -100,8 +125,9 @@
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
         const instruction = document.getElementById('instruction');
-        const resetBtn = document.getElementById('resetBtn');
+        const actionBtns = document.getElementById('actionBtns');
         const controlPanel = document.getElementById('controlPanel');
+        const logoText = document.getElementById('logoText');
         
         const sliderImg = document.getElementById('sliderImg');
         const sliderMkr = document.getElementById('sliderMkr');
@@ -124,9 +150,16 @@
         let isDraggingCanvas = false;
         let lastMouse = {x: 0, y: 0};
         let lastTouchDist = 0;
+        
+        // 核心狀態控制
+        let isTouchMode = false; // 判斷是否為手機觸控 (決定是否開潛望鏡)
+        let showMarkers = true;  // 判斷是否顯示尺標
 
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length > 0) handleImage(e.target.files[0]);
+            if (e.target.files && e.target.files.length > 0) {
+                handleImage(e.target.files[0]);
+                e.target.value = ''; // 允許重複上傳同一張圖
+            }
         });
 
         dropZone.addEventListener('dragover', (e) => e.preventDefault());
@@ -140,21 +173,36 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 img.onload = () => {
+                    // 載入完成，隱藏標題字，展現專業感
+                    logoText.style.display = 'none';
+                    
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
-                    instruction.style.display = 'block';
                     controlPanel.style.display = 'flex';
-                    resetBtn.style.display = 'block';
+                    actionBtns.style.display = 'flex';
+                    
+                    // 說明區僅在電腦大螢幕顯示
+                    if (window.innerWidth > 600) instruction.style.display = 'block';
                     
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     
+                    // 確保載入新圖時標記強制開啟
+                    showMarkers = true;
+                    document.getElementById('toggleBtn').innerText = '👁 標記';
+
                     resetView();
                 }
                 img.src = event.target.result;
             }
             reader.readAsDataURL(file);
+        }
+
+        function toggleMarkers() {
+            showMarkers = !showMarkers;
+            document.getElementById('toggleBtn').innerText = showMarkers ? '👁 標記' : '🚫 標記';
+            draw();
         }
 
         function detectBrightCenter(image) {
@@ -183,7 +231,8 @@
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
 
-            let targetZoom = 2.5; 
+            // 預設放大倍率升級至 3.5 倍
+            let targetZoom = 3.5; 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             transform.scale = baseScale * targetZoom;
 
@@ -276,6 +325,8 @@
         });
 
         function drawMarkersOverlay(context) {
+            if (!showMarkers) return; // 隱藏標記時不繪製
+            
             if (dragObj && (dragObj.type === 'point' || dragObj.type === 'group' || dragObj.type === 'line')) {
                 context.save();
                 context.setLineDash([6, 4]); context.lineWidth = 1.5;
@@ -333,7 +384,8 @@
             drawMarkersOverlay(ctx);
             calculateRatio();
 
-            if (dragObj && dragObj.type === 'point' && lastMouse) {
+            // 潛望鏡判斷：1.必須是觸控模式 2.必須有拖曳端點 3.不能隱藏標記
+            if (isTouchMode && showMarkers && dragObj && dragObj.type === 'point' && lastMouse) {
                 let magR = 90;     
                 let magZoom = 1.0; 
                 
@@ -343,12 +395,8 @@
                 if (magX < magR + 10) magX = magR + 10;
                 if (magX > canvas.width - magR - 10) magX = canvas.width - magR - 10;
 
-                if (magY < 140) {
-                    magY = lastMouse.y + 140; 
-                }
-                if (magY > canvas.height - magR - 10) {
-                    magY = canvas.height - magR - 10;
-                }
+                if (magY < 140) { magY = lastMouse.y + 140; }
+                if (magY > canvas.height - magR - 10) { magY = canvas.height - magR - 10; }
 
                 ctx.save();
                 ctx.beginPath(); ctx.arc(magX, magY, magR, 0, Math.PI*2);
@@ -379,10 +427,9 @@
             }
         }
 
-        // ==========================================
-        // 核心升級：AI 智慧精準選取 (Smart Hit-Testing)
-        // ==========================================
         function getHitTarget(tx, ty, isTouch) {
+            if (!showMarkers) return null; // 隱藏狀態下只能拖曳背景
+
             let center = getCenter();
             let dCenter = Math.sqrt(dist2({x: tx, y: ty}, center));
 
@@ -399,25 +446,20 @@
                 if (d < minLineDist) { minLineDist = d; closestLine = lines[i]; }
             }
 
-            // 手機版感應範圍加大 30%，讓胖手指更好操作
             let R_CENTER = isTouch ? 40 : 15;
             let R_POINT  = isTouch ? 45 : 20;
             let R_LINE   = isTouch ? 35 : 15;
 
-            // 目標競爭判斷邏輯
             if (dCenter <= R_CENTER && dCenter <= minPtDist) {
-                // 如果距離中心夠近，且比端點還近 -> 抓取整組中心
                 return { type: 'group', lastX: tx, lastY: ty };
             } 
             else if (minPtDist <= R_POINT) {
-                // 如果在端點範圍內 -> 優先抓取端點橫槓 (磁吸效應)
                 return { type: 'point', pt: closestPt };
             } 
             else if (minLineDist <= R_LINE) {
-                // 如果都不在中心跟端點範圍內，才判定是否抓到線條
                 return { type: 'line', pts: closestLine, lastX: tx, lastY: ty };
             }
-            return null; // 都沒抓到，判定為拖曳背景圖片
+            return null; 
         }
 
         canvas.addEventListener('wheel', e => {
@@ -443,6 +485,7 @@
         }, {passive: false});
 
         canvas.addEventListener('mousedown', e => {
+            isTouchMode = false; // 標記為滑鼠操作，關閉潛望鏡
             let mouseX = e.clientX; let mouseY = e.clientY;
             lastMouse = {x: mouseX, y: mouseY}; 
             
@@ -481,11 +524,11 @@
         window.addEventListener('mouseup', () => { dragObj = null; isDraggingCanvas = false; draw(); });
 
         canvas.addEventListener('touchstart', e => {
+            isTouchMode = true; // 標記為觸控操作，啟動潛望鏡權限
             if (e.touches.length === 1) {
                 let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
                 lastMouse = { x: tx, y: ty }; 
                 
-                // 套用智慧精準選取 (手機模式 = true)
                 dragObj = getHitTarget(tx, ty, true);
                 isDraggingCanvas = !dragObj;
                 draw(); 
