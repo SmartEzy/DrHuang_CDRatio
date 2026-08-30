@@ -32,16 +32,15 @@
         #instruction td:first-child { text-align: right; }
         #instruction td:nth-child(2) { font-weight: bold; }
 
-        /* 重新設計的極簡控制面板 */
         #controlPanel { display: none; position: absolute; right: 20px; bottom: 20px; background: rgba(0,0,0,0.75); padding: 16px; border-radius: 14px; z-index: 10; flex-direction: column; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); min-width: 180px; }
         
-        /* 並排的頂部操作按鈕 */
         .top-actions { display: flex; gap: 8px; width: 100%; }
         .action-btn { flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; }
         .action-btn:active { background: #222; transform: scale(0.97); }
 
-        .toggle-container { display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-top: 4px; }
-        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; }
+        /* 修正開關排版，改為向左對齊並設定間距 */
+        .toggle-container { display: flex; align-items: center; justify-content: flex-start; gap: 12px; cursor: pointer; margin-top: 4px; }
+        .toggle-container span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; }
         .switch { position: relative; width: 42px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
@@ -100,7 +99,6 @@
         </table>
     </div>
 
-    <!-- 優化排版後的控制面板 -->
     <div id="controlPanel">
         <div class="top-actions">
             <button class="action-btn" onclick="document.getElementById('fileInput').click()">📁 換圖</button>
@@ -214,14 +212,13 @@
         }
 
         // ==========================================
-        // 核心升級：進階版視神經盤尋跡演算法 (抗邊緣反光干擾)
+        // 核心升級 2.0：終極防誤判演算法 (強制雷達掃描)
         // ==========================================
         function detectBrightCenter(image) {
             try {
                 const tempCanvas = document.createElement('canvas');
                 const tCtx = tempCanvas.getContext('2d');
                 
-                // 1. 大幅縮小影像 (降噪，模糊微小光點)
                 const scale = 50 / image.width;
                 tempCanvas.width = 50; 
                 tempCanvas.height = Math.floor(image.height * scale);
@@ -232,21 +229,25 @@
                 let bestX = tempCanvas.width / 2; 
                 let bestY = tempCanvas.height / 2;
                 
-                // 2. 邊界排除 (忽略最外圍 15% 區域的感光，避開邊緣光暈)
-                let marginX = Math.floor(tempCanvas.width * 0.15);
-                let marginY = Math.floor(tempCanvas.height * 0.15);
+                let cx = tempCanvas.width / 2;
+                let cy = tempCanvas.height / 2;
+                // 強制縮小掃描半徑，只允許中心 65% 的區域被掃描，徹底斷絕邊緣反光！
+                let maxRadius = Math.min(cx, cy) * 0.65; 
                 
-                for (let y = marginY; y < tempCanvas.height - marginY; y++) {
-                    for (let x = marginX; x < tempCanvas.width - marginX; x++) {
+                for (let y = 0; y < tempCanvas.height; y++) {
+                    for (let x = 0; x < tempCanvas.width; x++) {
+                        let dx = x - cx;
+                        let dy = y - cy;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        // 任何超過半徑 65% 的亮點直接無視
+                        if (dist > maxRadius) continue; 
+                        
                         let idx = (y * tempCanvas.width + x) * 4;
                         let brightness = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
                         
-                        // 3. 中心加權 (微微偏好靠近中心的亮點)
-                        let dx = x - tempCanvas.width / 2;
-                        let dy = y - tempCanvas.height / 2;
-                        let distFromCenter = Math.sqrt(dx*dx + dy*dy);
-                        let centerBias = 1 - (distFromCenter / (tempCanvas.width / 2)) * 0.2; 
-                        
+                        // 距離中心越遠，光點分數打折越重
+                        let centerBias = 1 - (dist / maxRadius) * 0.4; 
                         let weightedBrightness = brightness * centerBias;
 
                         if (weightedBrightness > maxBrightness) { 
