@@ -44,53 +44,24 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* === 動作面板：絕對置中排版 === */
-        #actionPanel { width: 120px; padding: 12px; gap: 10px; }
+        /* 動作面板：修正排版，讓文字在不包含開關的區域完美置中 */
+        #actionPanel { width: 126px; padding: 12px; gap: 10px; align-items: stretch; }
+        .action-item { display: flex; align-items: center; justify-content: space-between; height: 28px; width: 100%; box-sizing: border-box; }
         
-        .action-item { 
-            position: relative; /* 定位基準 */
-            display: flex; 
-            justify-content: center; /* 內容絕對置中 */
-            align-items: center; 
-            width: 100%; 
-            height: 32px; 
-            box-sizing: border-box; 
-        }
-        
-        .action-text { 
-            font-size: 0.95rem; 
-            font-weight: bold; 
-            color: #fff; 
-            text-align: center;
-        }
-
-        .action-btn { 
-            background: #333; 
-            border: 1px solid #555; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3); 
-            transition: 0.1s; 
-        }
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { margin: 0; cursor: pointer; }
+        .toggle-container { cursor: pointer; margin: 0; }
+        /* 文字區域：總寬度扣除開關，並於內部置中 */
+        .action-text { width: calc(100% - 42px); text-align: center; color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; }
         
-        /* 開關漂浮在右側，不干擾文字置中 */
-        .switch { 
-            position: absolute; 
-            right: 0; 
-            width: 38px; 
-            height: 22px; 
-            display: inline-block; 
-        }
+        .switch { position: relative; width: 42px; height: 24px; display: inline-block; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 22px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
-        .slider-toggle:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+        .slider-toggle:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
         input:checked + .slider-toggle { background-color: #4cd964; }
-        input:checked + .slider-toggle:before { transform: translateX(16px); background-color: #fff; }
+        input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
-        /* 滑桿區設定 */
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
@@ -124,6 +95,7 @@
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
+            #actionPanel { width: 120px; padding: 10px; } 
             input[type=range] { width: 80px; }
         }
     </style>
@@ -154,25 +126,32 @@
     </div>
 
     <div id="rightControls">
-        <!-- 完美的數學級置中對齊動作面板 -->
         <div class="panel-box" id="actionPanel">
-            <label class="action-item toggle-container">
-                <span class="action-text">標記</span>
+            <!-- 新增的全標記開關 -->
+            <label class="toggle-container action-item">
+                <span class="action-text">全標記</span>
                 <div class="switch">
-                    <input type="checkbox" id="markerToggle" checked onchange="toggleMarkers(this.checked)">
+                    <input type="checkbox" id="markerAllToggle" checked onchange="toggleAllMarkers(this.checked)">
                     <span class="slider-toggle"></span>
                 </div>
             </label>
-            <button class="action-item action-btn" onclick="resetView()">
-                <span class="action-text">置中</span>
-            </button>
-            <button class="action-item action-btn" onclick="document.getElementById('fileInput').click()">
-                <span class="action-text">換圖</span>
-            </button>
+            <!-- 新增的綠標記 (Cup) 開關 -->
+            <label class="toggle-container action-item">
+                <span class="action-text">綠標記</span>
+                <div class="switch">
+                    <input type="checkbox" id="markerCupToggle" onchange="toggleCupMarkers(this.checked)">
+                    <span class="slider-toggle"></span>
+                </div>
+            </label>
+            <div class="action-item">
+                <button class="action-btn" onclick="resetView()">置中</button>
+            </div>
+            <div class="action-item">
+                <button class="action-btn" onclick="document.getElementById('fileInput').click()">換圖</button>
+            </div>
         </div>
 
         <div class="panel-box" id="sliderPanel">
-            <!-- C/D 最低值防呆設定為 0.05 -->
             <div class="ctrl-group">
                 <span>C/D</span>
                 <button class="step-btn" onclick="stepCD(-0.1)">-</button>
@@ -210,7 +189,9 @@
         const infoBar = document.getElementById('infoBar');
         const instruction = document.getElementById('instruction');
         const rightControls = document.getElementById('rightControls');
-        const markerToggle = document.getElementById('markerToggle');
+        
+        const markerAllToggle = document.getElementById('markerAllToggle');
+        const markerCupToggle = document.getElementById('markerCupToggle');
         
         const sliderCD = document.getElementById('sliderCD');
         const sliderImg = document.getElementById('sliderImg');
@@ -237,8 +218,11 @@
         
         let isTouchMode = false; 
         let lastTouchTime = 0; 
-        let showMarkers = true;
-        let isUpdatingCD = false; // 防衝突鎖定訊號
+        let isUpdatingCD = false; 
+
+        // 獨立雙開關狀態
+        let showAllMarkers = true;  
+        let showCupMarker = false;  
 
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
@@ -268,8 +252,11 @@
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     
-                    showMarkers = true;
-                    markerToggle.checked = true;
+                    // 初始載入：打開全標記，但【隱藏綠標記】
+                    showAllMarkers = true;
+                    markerAllToggle.checked = true;
+                    showCupMarker = false;
+                    markerCupToggle.checked = false;
 
                     resetView();
                 }
@@ -278,18 +265,35 @@
             reader.readAsDataURL(file);
         }
 
-        function toggleMarkers(isChecked) {
-            showMarkers = isChecked;
+        // 雙開關控制邏輯
+        function toggleAllMarkers(isChecked) {
+            showAllMarkers = isChecked;
+            draw();
+        }
+
+        function toggleCupMarkers(isChecked) {
+            showCupMarker = isChecked;
+            // 如果打開綠標，順便確保主標記也是開的
+            if (isChecked && !showAllMarkers) {
+                showAllMarkers = true;
+                markerAllToggle.checked = true;
+            }
             draw();
         }
 
         function setCDRatio(ratioVal) {
-            isUpdatingCD = true; // 啟動防衝突鎖
+            isUpdatingCD = true; 
             
             let targetV = parseFloat(ratioVal);
-            if (!showMarkers) {
-                showMarkers = true;
-                markerToggle.checked = true;
+            
+            // 只要調整 C/D，就自動把綠標記打開，體驗更順暢
+            if (!showCupMarker) {
+                showCupMarker = true;
+                markerCupToggle.checked = true;
+                if (!showAllMarkers) {
+                    showAllMarkers = true;
+                    markerAllToggle.checked = true;
+                }
             }
 
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
@@ -311,8 +315,7 @@
             pts.c_h2.y = pts.d_h2.y;
 
             draw();
-            
-            isUpdatingCD = false; // 解除防衝突鎖
+            isUpdatingCD = false; 
         }
 
         function stepCD(delta) {
@@ -455,7 +458,6 @@
             document.getElementById('vRatio').innerText = vRatio.toFixed(2);
             document.getElementById('hRatio').innerText = hRatio.toFixed(2);
 
-            // 確保不在滑動時才覆寫數值，防止 Focus 遺失時互相覆蓋卡死
             if(!isUpdatingCD && document.activeElement !== sliderCD) {
                 sliderCD.value = vRatio.toFixed(2);
             }
@@ -520,9 +522,10 @@
         });
 
         function drawMarkersOverlay(context) {
-            if (!showMarkers) return; 
+            if (!showAllMarkers) return; 
             
             context.save();
+            // 十等份紅線尺標 (依賴全標記顯示)
             for (let i = 1; i <= 9; i++) {
                 if (i === 5) continue;
                 let f = i / 10;
@@ -570,12 +573,33 @@
                 context.strokeStyle = p.color; context.lineWidth = 3; context.stroke();
             }
             
-            for (let key in pts) drawDash(pts[key], key);
+            // 繪製端點：若綠標記關閉，則略過 c_ 開頭的座標
+            for (let key in pts) {
+                if (!showCupMarker && key.startsWith('c_')) continue;
+                drawDash(pts[key], key);
+            }
             
             let center = getCenter();
             context.beginPath(); context.arc(center.x, center.y, 8, 0, Math.PI*2);
             context.fillStyle = 'rgba(255, 255, 255, 0.4)'; context.fill();
             context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
+            
+            // 拖曳時的輔助虛線
+            if (dragObj && (dragObj.type === 'point' || dragObj.type === 'group' || dragObj.type === 'line')) {
+                context.save();
+                context.setLineDash([6, 4]); context.lineWidth = 1.5;
+                
+                context.strokeStyle = dColor;
+                context.beginPath(); context.moveTo(pts.d_v1.x, pts.d_v1.y); context.lineTo(pts.d_v2.x, pts.d_v2.y); context.stroke();
+                context.beginPath(); context.moveTo(pts.d_h1.x, pts.d_h1.y); context.lineTo(pts.d_h2.x, pts.d_h2.y); context.stroke();
+                
+                if (showCupMarker) {
+                    context.strokeStyle = cColor;
+                    context.beginPath(); context.moveTo(pts.c_v1.x, pts.c_v1.y); context.lineTo(pts.c_v2.x, pts.c_v2.y); context.stroke();
+                    context.beginPath(); context.moveTo(pts.c_h1.x, pts.c_h1.y); context.lineTo(pts.c_h2.x, pts.c_h2.y); context.stroke();
+                }
+                context.restore();
+            }
         }
 
         function draw() {
@@ -593,7 +617,7 @@
             drawMarkersOverlay(ctx);
             calculateRatio();
 
-            if (isTouchMode && showMarkers && dragObj && dragObj.type === 'point' && lastMouse) {
+            if (isTouchMode && showAllMarkers && dragObj && dragObj.type === 'point' && lastMouse) {
                 let magR = 90;     
                 let magZoom = 1.0; 
                 
@@ -636,19 +660,31 @@
         }
 
         function getHitTarget(tx, ty, isTouch) {
-            if (!showMarkers) return null; 
+            if (!showAllMarkers) return null; 
 
             let center = getCenter();
             let dCenter = Math.sqrt(dist2({x: tx, y: ty}, center));
 
             let minPtDist = Infinity; let closestPt = null;
+            let validPts = {};
+            
+            // 過濾掉隱藏的點
             for (let key in pts) {
-                let d = Math.sqrt(dist2({x: tx, y: ty}, pts[key]));
-                if (d < minPtDist) { minPtDist = d; closestPt = pts[key]; }
+                if (!showCupMarker && key.startsWith('c_')) continue;
+                validPts[key] = pts[key];
+            }
+
+            for (let key in validPts) {
+                let d = Math.sqrt(dist2({x: tx, y: ty}, validPts[key]));
+                if (d < minPtDist) { minPtDist = d; closestPt = validPts[key]; }
             }
 
             let minLineDist = Infinity; let closestLine = null;
-            let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2], [pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2] ];
+            let lines = [ [pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2] ];
+            if (showCupMarker) {
+                lines.push([pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2]);
+            }
+
             for (let i = 0; i < lines.length; i++) {
                 let d = Math.sqrt(distToSegmentSquared({x: tx, y: ty}, lines[i][0], lines[i][1]));
                 if (d < minLineDist) { minLineDist = d; closestLine = lines[i]; }
