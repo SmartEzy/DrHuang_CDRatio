@@ -38,13 +38,13 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        #actionPanel { width: 110px; gap: 10px; align-items: stretch; }
-        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; }
+        #actionPanel { gap: 10px; width: fit-content; align-self: flex-end; }
+        .action-item { display: flex; align-items: center; justify-content: space-between; height: 28px; width: 100%; }
         
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; }
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { gap: 8px; cursor: pointer; }
+        .toggle-container { gap: 12px; cursor: pointer; }
         .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; }
         .switch { position: relative; width: 42px; height: 24px; display: inline-block; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -53,15 +53,13 @@
         input:checked + .slider-toggle { background-color: #4cd964; }
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
-        #sliderPanel { gap: 12px; }
+        #cdPanel, #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
         
         .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
         .step-btn:hover { background: rgba(255,255,255,0.25); }
         .step-btn:active { transform: scale(0.9); background: #4cd964; color: #111; }
-        
-        .divider { height: 1px; background: #555; margin: 2px 0; width: 100%; }
 
         input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
         input[type=range]:focus { outline: none; }
@@ -70,6 +68,8 @@
         input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); background: #fff; }
         input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
         input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+
+        .divider { height: 1px; background: #555; margin: 2px 0; width: 100%; }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; }
 
@@ -474,70 +474,38 @@
         function drawMarkersOverlay(context) {
             if (!showMarkers) return; 
             
-            if (dragObj && (dragObj.type === 'point' || dragObj.type === 'group' || dragObj.type === 'line')) {
-                context.save();
-                context.setLineDash([6, 4]); context.lineWidth = 1.5;
-                
-                context.strokeStyle = dColor;
-                context.beginPath(); context.moveTo(pts.d_v1.x, pts.d_v1.y); context.lineTo(pts.d_v2.x, pts.d_v2.y); context.stroke();
-                context.beginPath(); context.moveTo(pts.d_h1.x, pts.d_h1.y); context.lineTo(pts.d_h2.x, pts.d_h2.y); context.stroke();
-                
-                context.strokeStyle = cColor;
-                context.beginPath(); context.moveTo(pts.c_v1.x, pts.c_v1.y); context.lineTo(pts.c_v2.x, pts.c_v2.y); context.stroke();
-                context.beginPath(); context.moveTo(pts.c_h1.x, pts.c_h1.y); context.lineTo(pts.c_h2.x, pts.c_h2.y); context.stroke();
-                context.restore();
-            }
-            context.setLineDash([]);
-
-            // === 繪製十等份紅線尺標 ===
+            // 繪製十等份小點 (移除所有多餘連線)
             context.save();
-            context.strokeStyle = 'rgba(255, 59, 48, 0.3)';
-            context.lineWidth = 1.5;
-            context.beginPath();
-            context.moveTo(pts.d_v1.x, pts.d_v1.y); context.lineTo(pts.d_v2.x, pts.d_v2.y);
-            context.moveTo(pts.d_h1.x, pts.d_h1.y); context.lineTo(pts.d_h2.x, pts.d_h2.y);
-            context.stroke();
-
             for (let i = 1; i <= 9; i++) {
+                if (i === 5) continue; // 省略中點
                 let f = i / 10;
-                let isCenter = (i === 5);
-                let tickLen = isCenter ? 8 : 4; 
                 
-                // 垂直軸十等份
+                // 垂直軸小點
                 let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
                 let vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
-                
                 context.beginPath();
-                context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-                context.lineWidth = 3;
-                context.moveTo(vx - tickLen, vy); context.lineTo(vx + tickLen, vy);
-                context.stroke();
-                
+                context.arc(vx, vy, 2.5, 0, Math.PI*2);
+                context.fillStyle = 'rgba(255, 255, 255, 0.7)'; // 白色光暈
+                context.fill();
                 context.beginPath();
-                context.strokeStyle = dColor;
-                context.lineWidth = 1.5;
-                context.moveTo(vx - tickLen, vy); context.lineTo(vx + tickLen, vy);
-                context.stroke();
+                context.arc(vx, vy, 1.5, 0, Math.PI*2);
+                context.fillStyle = dColor; // 紅色核心
+                context.fill();
 
-                // 水平軸十等份
+                // 水平軸小點
                 let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x);
                 let hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
-                
                 context.beginPath();
-                context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-                context.lineWidth = 3;
-                context.moveTo(hx, hy - tickLen); context.lineTo(hx, hy + tickLen);
-                context.stroke();
-
+                context.arc(hx, hy, 2.5, 0, Math.PI*2);
+                context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                context.fill();
                 context.beginPath();
-                context.strokeStyle = dColor;
-                context.lineWidth = 1.5;
-                context.moveTo(hx, hy - tickLen); context.lineTo(hx, hy + tickLen);
-                context.stroke();
+                context.arc(hx, hy, 1.5, 0, Math.PI*2);
+                context.fillStyle = dColor;
+                context.fill();
             }
             context.restore();
 
-            // 原本的端點標記 (綠與紅)
             function drawDash(p, key) {
                 let dashLen = 14; 
                 context.beginPath();
@@ -579,47 +547,6 @@
 
             drawMarkersOverlay(ctx);
             calculateRatio();
-
-            if (isTouchMode && showMarkers && dragObj && dragObj.type === 'point' && lastMouse) {
-                let magR = 90;     
-                let magZoom = 1.0; 
-                
-                let magX = lastMouse.x;
-                let magY = lastMouse.y - 130; 
-
-                if (magX < magR + 10) magX = magR + 10;
-                if (magX > canvas.width - magR - 10) magX = canvas.width - magR - 10;
-
-                if (magY < 140) { magY = lastMouse.y + 140; }
-                if (magY > canvas.height - magR - 10) { magY = canvas.height - magR - 10; }
-
-                ctx.save();
-                ctx.beginPath(); ctx.arc(magX, magY, magR, 0, Math.PI*2);
-                ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
-                ctx.clip();
-                
-                ctx.fillStyle = '#111'; ctx.fill();
-
-                ctx.translate(magX, magY);
-                ctx.scale(magZoom, magZoom);
-                ctx.translate(-lastMouse.x, -lastMouse.y);
-
-                ctx.save();
-                ctx.translate(transform.x, transform.y);
-                ctx.scale(transform.scale, transform.scale);
-                if(img.src) ctx.drawImage(img, 0, 0);
-                ctx.restore();
-
-                drawMarkersOverlay(ctx);
-                ctx.restore();
-
-                ctx.save();
-                ctx.beginPath();
-                ctx.moveTo(magX - 8, magY); ctx.lineTo(magX + 8, magY);
-                ctx.moveTo(magX, magY - 8); ctx.lineTo(magX, magY + 8);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.restore();
-            }
         }
 
         function getHitTarget(tx, ty, isTouch) {
