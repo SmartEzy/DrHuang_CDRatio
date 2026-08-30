@@ -27,11 +27,15 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
+        /* 說明區：更緊湊且完美的左右對齊 */
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
         #instruction td { padding: 3px 2px; vertical-align: middle; }
-        #instruction td:first-child { text-align: right; }
-        #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
+        #instruction td:first-child { text-align: right; white-space: nowrap; }
+        #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 8px; }
+        
+        /* 專為冒號右側文字設計的 Flexbox 兩端對齊 */
+        .txt-justify { display: flex; justify-content: space-between; width: 3.4rem; }
 
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 16px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; }
@@ -52,10 +56,14 @@
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
         #sliderPanel { gap: 12px; }
-        .ctrl-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: right; font-weight: bold; }
+        .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; }
         
-        input[type=range] { -webkit-appearance: none; width: 110px; background: transparent; }
+        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; }
+        .step-btn:hover { background: rgba(255,255,255,0.25); }
+        .step-btn:active { transform: scale(0.9); }
+
+        input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
         input[type=range]:focus { outline: none; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; margin-top: -5px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: 0.1s; }
@@ -73,7 +81,7 @@
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
-            input[type=range] { width: 100px; }
+            input[type=range] { width: 80px; }
         }
     </style>
 </head>
@@ -94,11 +102,12 @@
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
     
+    <!-- 更新排版，使用 flexbox 兩端對齊冒號右側文字 -->
     <div id="instruction">
         <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>同步</td></tr>
-            <tr><td><b>Shift + 操作</b></td><td>:</td><td>圖片</td></tr>
-            <tr><td><b>Ctrl + 操作</b></td><td>:</td><td>尺標</td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>&amp;</span><span>尺</span></div></td></tr>
+            <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
+            <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
         </table>
     </div>
 
@@ -122,15 +131,21 @@
         <div class="panel-box" id="sliderPanel">
             <div class="ctrl-group">
                 <span>圖片</span>
+                <button class="step-btn" onclick="stepZoom('Img', -0.1)">-</button>
                 <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
+                <button class="step-btn" onclick="stepZoom('Img', 0.1)">+</button>
             </div>
             <div class="ctrl-group">
                 <span>尺標</span>
+                <button class="step-btn" onclick="stepZoom('Mkr', -0.1)">-</button>
                 <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
+                <button class="step-btn" onclick="stepZoom('Mkr', 0.1)">+</button>
             </div>
             <div class="ctrl-group">
                 <span>同步</span>
+                <button class="step-btn" onclick="stepZoom('All', -0.1)">-</button>
                 <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
+                <button class="step-btn" onclick="stepZoom('All', 0.1)">+</button>
             </div>
         </div>
     </div>
@@ -189,7 +204,6 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 img.onload = () => {
-                    // 保留 Logo 旁的字樣，不再隱藏 logoText
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
@@ -215,22 +229,17 @@
             draw();
         }
 
-        // ==========================================
-        // 終極尋跡演算法：區塊面積平均掃描 (解決新月形反光干擾)
-        // ==========================================
         function detectBrightCenter(image) {
             try {
                 const tempCanvas = document.createElement('canvas');
                 const tCtx = tempCanvas.getContext('2d');
                 
-                // 縮小圖片提升運算速度與天然降噪
                 const scale = 64 / image.width;
                 tempCanvas.width = 64; 
                 tempCanvas.height = Math.floor(image.height * scale);
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
-                // 1. 抓取真實眼底邊界
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
                 for (let i = 0; i < imgData.length; i += 4) {
                     if (imgData[i] > 15) { 
@@ -249,7 +258,6 @@
                 
                 if (eyeR <= 0) return null;
 
-                // 2. 建立亮度矩陣 (提取亮度特徵)
                 let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
                 for (let y = 0; y < tempCanvas.height; y++) {
                     for (let x = 0; x < tempCanvas.width; x++) {
@@ -262,20 +270,16 @@
                 let bestX = eyeCx; 
                 let bestY = eyeCy;
                 
-                // 預估視神經盤的大小 (約為半徑的 15%)，做為掃描探照燈的半徑
                 let winR = Math.max(2, Math.floor(eyeR * 0.15));
 
-                // 3. 用「虛擬探照燈」掃描，計算區塊平均亮度
                 for (let y = minY + winR; y <= maxY - winR; y++) {
                     for (let x = minX + winR; x <= maxX - winR; x++) {
                         let dx = x - eyeCx;
                         let dy = y - eyeCy;
                         let dist = Math.sqrt(dx*dx + dy*dy);
                         
-                        // 拒絕極度靠近邊緣的點 (避開新月形邊界反光)
                         if (dist > eyeR * 0.88) continue; 
                         
-                        // 計算探照燈範圍內的平均亮度
                         let sum = 0, count = 0;
                         for(let wy = -winR; wy <= winR; wy++) {
                             for(let wx = -winR; wx <= winR; wx++) {
@@ -287,11 +291,9 @@
                         }
                         let localAvg = sum / count;
                         
-                        // Y 軸懲罰：視神經盤應在水平中線上
                         let ny = Math.abs(dy) / eyeR; 
                         let yWeight = Math.max(0.1, 1 - Math.pow(ny / 0.4, 2)); 
                         
-                        // 最終得分：大面積平均亮度 × 水平線加權
                         let score = localAvg * yWeight;
 
                         if (score > maxScore) { 
@@ -320,8 +322,8 @@
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             
             let scaledMin = Math.min(img.width * transform.scale, img.height * transform.scale);
-            let dRy = scaledMin * 0.08; let dRx = scaledMin * 0.07; 
-            let cRy = scaledMin * 0.04; let cRx = scaledMin * 0.035; 
+            let dRy = scaledMin * 0.065; let dRx = scaledMin * 0.055; 
+            let cRy = scaledMin * 0.032; let cRx = scaledMin * 0.028; 
             
             pts = {
                 d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
@@ -374,6 +376,17 @@
                 pts[key].x = cx + (pts[key].x - cx) * factor;
                 pts[key].y = cy + (pts[key].y - cy) * factor;
             }
+        }
+
+        function stepZoom(type, delta) {
+            let slider = document.getElementById('slider' + type);
+            let newVal = parseFloat(slider.value) + delta;
+            
+            if (newVal < parseFloat(slider.min)) newVal = parseFloat(slider.min);
+            if (newVal > parseFloat(slider.max)) newVal = parseFloat(slider.max);
+            
+            slider.value = newVal;
+            slider.dispatchEvent(new Event('input'));
         }
 
         sliderImg.addEventListener('input', (e) => {
