@@ -36,38 +36,30 @@
         .txt-justify { display: flex; justify-content: space-between; width: 2.5em; }
 
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
-        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; width: 100%; box-sizing: border-box; }
+        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* 上層動作面板 */
-        #actionPanel { align-items: flex-end; gap: 10px; min-width: auto; }
-        .action-item { display: flex; align-items: center; justify-content: flex-end; height: 28px; }
+        /* 動作按鈕區：強制寬度貼齊最寬元素(Switch開關)，實現極窄滿版框 */
+        #actionPanel { gap: 10px; width: fit-content; align-self: flex-end; }
+        .action-item { display: flex; align-items: center; justify-content: space-between; height: 28px; width: 100%; }
         
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0 16px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; }
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { gap: 10px; cursor: pointer; }
-        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; }
-        .switch { position: relative; width: 42px; height: 24px; display: inline-block; }
+        .toggle-container { gap: 12px; cursor: pointer; }
+        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; }
+        .switch { position: relative; width: 42px; height: 24px; display: inline-block; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
         .slider-toggle:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
         input:checked + .slider-toggle { background-color: #4cd964; }
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
-        /* 中層一鍵預設面板 */
-        #presetPanel { gap: 6px; }
-        .preset-label { color: #aaa; font-size: 0.8rem; font-weight: bold; }
-        .preset-group { display: flex; gap: 4px; width: 100%; }
-        .preset-btn { flex: 1; background: #333; border: 1px solid #555; color: #fff; border-radius: 6px; padding: 6px 0; font-size: 0.95rem; cursor: pointer; transition: 0.1s; font-weight: bold; display: flex; justify-content: center; align-items: center; }
-        .preset-btn:hover { background: #444; }
-        .preset-btn:active { transform: scale(0.9); background: #4cd964; border-color: #4cd964; color: #111; }
-
-        /* 下層滑桿區 */
-        #sliderPanel { gap: 12px; }
-        .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; }
+        /* 滑桿區設定 */
+        #cdPanel, #sliderPanel { gap: 12px; }
+        .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
+        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
         
-        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; }
+        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
         .step-btn:hover { background: rgba(255,255,255,0.25); }
         .step-btn:active { transform: scale(0.9); background: #4cd964; color: #111; }
 
@@ -87,10 +79,9 @@
             #logoText { font-size: 1.1rem; margin-left: 8px; }
             #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
             #instruction { display: none !important; } 
-            #rightControls { right: 15px; bottom: 20px; gap: 8px; }
-            .panel-box { padding: 10px 12px; border-radius: 10px; }
+            #rightControls { right: 15px; bottom: 20px; gap: 10px; }
+            .panel-box { padding: 12px; border-radius: 12px; }
             input[type=range] { width: 80px; }
-            .preset-btn { font-size: 0.85rem; padding: 4px 0; }
         }
     </style>
 </head>
@@ -120,7 +111,7 @@
     </div>
 
     <div id="rightControls">
-        <!-- 動作區 -->
+        <!-- 動作區：窄框切齊排版 -->
         <div class="panel-box" id="actionPanel">
             <label class="toggle-container action-item">
                 <span>標記</span>
@@ -137,21 +128,17 @@
             </div>
         </div>
 
-        <!-- 快速 C/D 比例預設按鈕區 -->
-        <div class="panel-box" id="presetPanel">
-            <div class="preset-label">快速 C/D 比例</div>
-            <div class="preset-group">
-                <button class="preset-btn" onclick="setCDRatio(0.3)">.3</button>
-                <button class="preset-btn" onclick="setCDRatio(0.4)">.4</button>
-                <button class="preset-btn" onclick="setCDRatio(0.5)">.5</button>
-                <button class="preset-btn" onclick="setCDRatio(0.6)">.6</button>
-                <button class="preset-btn" onclick="setCDRatio(0.7)">.7</button>
-                <button class="preset-btn" onclick="setCDRatio(0.8)">.8</button>
-                <button class="preset-btn" onclick="setCDRatio(0.9)">.9</button>
+        <!-- C/D Ratio 專屬滑桿區 -->
+        <div class="panel-box" id="cdPanel">
+            <div class="ctrl-group">
+                <span>C/D</span>
+                <button class="step-btn" onclick="stepCD(-0.1)">-</button>
+                <input type="range" id="sliderCD" min="0.0" max="1.0" step="0.1" value="0.5" oninput="setCDRatio(this.value)">
+                <button class="step-btn" onclick="stepCD(0.1)">+</button>
             </div>
         </div>
 
-        <!-- 滑桿區 -->
+        <!-- 畫面與尺標縮放滑桿區 -->
         <div class="panel-box" id="sliderPanel">
             <div class="ctrl-group">
                 <span>圖片</span>
@@ -185,6 +172,7 @@
         const rightControls = document.getElementById('rightControls');
         const markerToggle = document.getElementById('markerToggle');
         
+        const sliderCD = document.getElementById('sliderCD');
         const sliderImg = document.getElementById('sliderImg');
         const sliderMkr = document.getElementById('sliderMkr');
         const sliderAll = document.getElementById('sliderAll');
@@ -253,34 +241,37 @@
             draw();
         }
 
-        // ==========================================
-        // 核心新功能：一鍵設定 C/D 比例
-        // 以紅線 (Disc) 為基準，重新計算綠線 (Cup) 的位置
-        // ==========================================
-        function setCDRatio(ratio) {
-            // 如果標記被隱藏了，先強制打開
+        // C/D Ratio 滑桿變動事件 (連動畫面標記)
+        function setCDRatio(ratioVal) {
+            let ratio = parseFloat(ratioVal);
             if (!showMarkers) {
                 showMarkers = true;
                 markerToggle.checked = true;
             }
-
-            // 垂直方向 (V)：根據紅色 D 標記的中心與高度，重新定位綠色 C 標記
             let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
             let dv_h = Math.abs(pts.d_v1.y - pts.d_v2.y);
             pts.c_v1.y = dv_cy - (dv_h / 2) * ratio;
-            pts.c_v1.x = pts.d_v1.x; // 鎖定 X 軸對齊
+            pts.c_v1.x = pts.d_v1.x; 
             pts.c_v2.y = dv_cy + (dv_h / 2) * ratio;
             pts.c_v2.x = pts.d_v2.x; 
 
-            // 水平方向 (H)：根據紅色 D 標記的中心與寬度，重新定位綠色 C 標記
             let dh_cx = (pts.d_h1.x + pts.d_h2.x) / 2;
             let dh_w = Math.abs(pts.d_h1.x - pts.d_h2.x);
             pts.c_h1.x = dh_cx - (dh_w / 2) * ratio;
-            pts.c_h1.y = pts.d_h1.y; // 鎖定 Y 軸對齊
+            pts.c_h1.y = pts.d_h1.y; 
             pts.c_h2.x = dh_cx + (dh_w / 2) * ratio;
             pts.c_h2.y = pts.d_h2.y;
 
             draw();
+        }
+
+        // C/D Ratio 微調按鈕邏輯
+        function stepCD(delta) {
+            let newVal = parseFloat(sliderCD.value) + delta;
+            if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
+            if (newVal > parseFloat(sliderCD.max)) newVal = parseFloat(sliderCD.max);
+            sliderCD.value = newVal.toFixed(1);
+            setCDRatio(sliderCD.value);
         }
 
         function detectBrightCenter(image) {
@@ -375,11 +366,13 @@
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            // 將初始 C/D 比例精準鎖定在 0.50，解決 0.48 的零頭問題
             let dRy = baseScaledMin * mkrZoom * 0.055; 
             let dRx = baseScaledMin * mkrZoom * 0.045; 
-            let cRy = dRy * 0.50; 
-            let cRx = dRx * 0.50; 
+            
+            // 讀取當前 C/D 滑桿的比例值，初始化標記
+            let currentCDRatio = parseFloat(sliderCD.value) || 0.5;
+            let cRy = dRy * currentCDRatio; 
+            let cRx = dRx * currentCDRatio; 
             
             pts = {
                 d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
@@ -410,8 +403,15 @@
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
             let vRatio = (discV === 0) ? 0 : (cupV / discV); let hRatio = (discH === 0) ? 0 : (cupH / discH);
+            
             document.getElementById('vRatio').innerText = vRatio.toFixed(2);
             document.getElementById('hRatio').innerText = hRatio.toFixed(2);
+
+            // 【雙向連動】如果使用者正在畫面拖曳標記，動態將平均比例同步更新回 C/D 滑桿 UI
+            if(document.activeElement !== sliderCD) {
+                let avgRatio = (vRatio + hRatio) / 2;
+                sliderCD.value = avgRatio.toFixed(2);
+            }
         }
 
         function getCenter() {
