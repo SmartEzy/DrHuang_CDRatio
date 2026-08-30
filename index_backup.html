@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CDRatio">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <title>CDRatio</title>
+    <style>
+        body { 
+            font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #111; margin: 0; padding: 0; color: white; height: 100vh; overflow: hidden; justify-content: center; 
+            touch-action: none; 
+            -webkit-touch-callout: none; 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
+        
+        #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
+        #logoText { margin-left: 12px; font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
+        .c-color { color: #4cd964; } 
+        .d-color { color: #ff3b30; } 
+        
+        #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; pointer-events: auto; transition: 0.2s; }
+        #dropZone:hover { background: #333; border-color: #888; }
+        #fileInput { display: none; }
+        
+        #infoBar { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 8px 20px; border-radius: 30px; font-size: 1.4rem; z-index: 10; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); white-space: nowrap; }
+        .val { font-weight: bold; margin: 0 6px; color: #fff; }
+        .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
+        .label:first-child { margin-left: 0; }
+        
+        #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
+        #instruction table { border-collapse: collapse; }
+        #instruction td { padding: 3px 2px; vertical-align: middle; }
+        #instruction td:first-child { text-align: right; white-space: nowrap; }
+        #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
+        #instruction td:last-child { text-align: left; white-space: nowrap; }
+        .txt-justify { display: flex; justify-content: space-between; width: 2.5em; }
+
+        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
+        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
+        
+        #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
+        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
+        
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
+        .action-btn:active { background: #222; transform: scale(0.95); }
+
+        .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
+        .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
+        .seg-btn:last-child { border-right: none; }
+        .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
+        .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
+        .seg-btn:active { transform: scale(0.90); }
+
+        #sliderPanel { gap: 12px; }
+        .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
+        .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
+        
+        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
+        .step-btn:hover { background: rgba(255,255,255,0.25); }
+        .step-btn:active { transform: scale(0.9); background: #4cd964; color: #111; }
+        
+        .divider { height: 1px; background: #555; margin: 2px 0; width: 100%; }
+
+        input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; margin-top: -5px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: 0.1s; }
+        input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); background: #fff; }
+        input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
+        input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+
+        canvas { 
+            display: none; width: 100vw; height: 100vh; cursor: crosshair; 
+            -webkit-touch-callout: none; 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
+
+        @media (max-width: 600px) {
+            #logo { top: 15px; left: 15px; }
+            #logo img { height: 28px !important; }
+            #logoText { font-size: 1.1rem; margin-left: 8px; }
+            #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
+            #instruction { display: none !important; } 
+            #rightControls { right: 15px; bottom: 20px; gap: 10px; }
+            .panel-box { padding: 12px; border-radius: 12px; }
+            #actionPanel { width: 130px; padding: 10px; } 
+            input[type=range] { width: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="logo">
+        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
+        <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
+    </div>
+
+    <div id="dropZone" onclick="document.getElementById('fileInput').click()">
+        點擊畫面選擇圖片，或將眼底圖拖曳至視窗內
+        <input type="file" id="fileInput" accept="image/*" />
+    </div>
+
+    <div id="infoBar">
+        <span class="label">V:</span><span id="vRatio" class="val">0.00</span>
+        <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
+    </div>
+    
+    <div id="instruction">
+        <table>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>&amp;</span><span>尺</span></div></td></tr>
+            <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
+            <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
+            <tr><td><b>+Opt/Alt</b></td><td>:</td><td><div class="txt-justify"><span>對</span><span>稱</span></div></td></tr>
+        </table>
+    </div>
+
+    <div id="rightControls">
+        <div class="panel-box" id="actionPanel">
+            <div class="action-item seg-group">
+                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
+                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')">Disc</button>
+                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
+            </div>
+            <div class="action-item">
+                <button class="action-btn" onclick="resetView()">置中</button>
+            </div>
+            <div class="action-item">
+                <button class="action-btn" onclick="document.getElementById('fileInput').click()">換圖</button>
+            </div>
+        </div>
+
+        <div class="panel-box" id="sliderPanel">
+            <div class="ctrl-group">
+                <span>C/D</span>
+                <button class="step-btn" onclick="stepCD(-1)">-</button>
+                <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
+                <button class="step-btn" onclick="stepCD(1)">+</button>
+            </div>
+            <div class="divider"></div>
+            <div class="ctrl-group">
+                <span>圖片</span>
+                <button class="step-btn" onclick="stepZoom('Img', -0.2)">-</button>
+                <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
+                <button class="step-btn" onclick="stepZoom('Img', 0.2)">+</button>
+            </div>
+            <div class="ctrl-group">
+                <span>尺標</span>
+                <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
+                <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
+                <button class="step-btn" onclick="stepZoom('Mkr', 0.2)">+</button>
+            </div>
+            <div class="ctrl-group">
+                <span>同步</span>
+                <button class="step-btn" onclick="stepZoom('All', -0.2)">-</button>
+                <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
+                <button class="step-btn" onclick="stepZoom('All', 0.2)">+</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('canvas');
+        const infoBar = document.getElementById('infoBar');
+        const instruction = document.getElementById('instruction');
+        const rightControls = document.getElementById('rightControls');
+        
+        const sliderCD = document.getElementById('sliderCD');
+        const sliderImg = document.getElementById('sliderImg');
+        const sliderMkr = document.getElementById('sliderMkr');
+        const sliderAll = document.getElementById('sliderAll');
+
+        const ctx = canvas.getContext('2d');
+        let img = new Image();
+        
+        const cColor = '#4cd964'; 
+        const dColor = '#ff3b30'; 
+
+        let pts = {};
+        let transform = { scale: 1, x: 0, y: 0 };
+        
+        let imgZoom = 3.5;
+        let mkrZoom = 3.5;
+        let allZoom = 3.5;
+
+        let dragObj = null; 
+        let isDraggingCanvas = false;
+        let lastMouse = {x: 0, y: 0};
+        let lastTouchDist = 0;
+        
+        let isTouchMode = false; 
+        let lastTouchTime = 0; 
+        let isUpdatingCD = false; 
+
+        let showCup = false;  
+        let showDisc = true;  
+
+        window.addEventListener('dragover', (e) => e.preventDefault());
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleImage(e.dataTransfer.files[0]);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleImage(e.target.files[0]);
+                e.target.value = ''; 
+            }
+        });
+
+        function handleImage(file) {
+            if (!file.type.match('image.*')) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                img.onload = () => {
+                    dropZone.style.display = 'none';
+                    canvas.style.display = 'block';
+                    infoBar.style.display = 'block';
+                    rightControls.style.display = 'flex';
+                    
+                    if (window.innerWidth > 600) instruction.style.display = 'block';
+                    
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    
+                    showCup = false;
+                    showDisc = true;
+                    updateSegUI();
+
+                    resetView();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function toggleSeg(type) {
+            if (type === 'Cup') {
+                showCup = !showCup;
+            } else if (type === 'Disc') {
+                showDisc = !showDisc;
+            } else if (type === 'All') {
+                if (showCup && showDisc) {
+                    showCup = false;
+                    showDisc = false;
+                } else {
+                    showCup = true;
+                    showDisc = true;
+                }
+            }
+            updateSegUI();
+            draw();
+        }
+
+        function updateSegUI() {
+            const btnCup = document.getElementById('btnCup');
+            const btnDisc = document.getElementById('btnDisc');
+            
+            if (showCup) {
+                btnCup.classList.add('active-cup');
+            } else {
+                btnCup.classList.remove('active-cup');
+            }
+
+            if (showDisc) {
+                btnDisc.classList.add('active-disc');
+            } else {
+                btnDisc.classList.remove('active-disc');
+            }
+        }
+
+        function setCDRatio(ratioVal) {
+            isUpdatingCD = true; 
+            let targetV = parseFloat(ratioVal);
+            
+            if (!showCup || !showDisc) {
+                showCup = true;
+                showDisc = true;
+                updateSegUI();
+            }
+
+            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
+            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
+
+            let targetCupV = discV * targetV;
+            let targetCupH = discH * targetV;
+
+            let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
+            pts.c_v1.y = dv_cy - (targetCupV / 2);
+            pts.c_v1.x = pts.d_v1.x; 
+            pts.c_v2.y = dv_cy + (targetCupV / 2);
+            pts.c_v2.x = pts.d_v2.x; 
+
+            let dh_cx = (pts.d_h1.x + pts.d_h2.x) / 2;
+            pts.c_h1.x = dh_cx - (targetCupH / 2);
+            pts.c_h1.y = pts.d_h1.y; 
+            pts.c_h2.x = dh_cx + (targetCupH / 2);
+            pts.c_h2.y = pts.d_h2.y;
+
+            draw();
+            isUpdatingCD = false; 
+        }
+
+        function stepCD(direction) {
+            let current = parseFloat(sliderCD.value);
+            let newVal;
+            
+            if (direction > 0) {
+                newVal = Math.floor(current * 10 + 1.001) / 10;
+            } else {
+                newVal = Math.ceil(current * 10 - 1.001) / 10;
+            }
+
+            if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
+            if (newVal > parseFloat(sliderCD.max)) newVal = parseFloat(sliderCD.max);
+            
+            sliderCD.value = newVal.toFixed(2);
+            setCDRatio(sliderCD.value);
+        }
+
+        function detectBrightCenter(image) {
+            try {
+                const tempCanvas = document.createElement('canvas');
+                const tCtx = tempCanvas.getContext('2d');
+                
+                const scale = 64 / image.width;
+                tempCanvas.width = 64; 
+                tempCanvas.height = Math.floor(image.height * scale);
+                tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
+                const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+                
+                let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
+                for (let i = 0; i < imgData.length; i += 4) {
+                    if (imgData[i] > 15) { 
+                        let px = (i / 4) % tempCanvas.width;
+                        let py = Math.floor((i / 4) / tempCanvas.width);
+                        if (px < minX) minX = px; if (px > maxX) maxX = px;
+                        if (py < minY) minY = py; if (py > maxY) maxY = py;
+                    }
+                }
+                
+                let eyeCx = (minX + maxX) / 2;
+                let eyeCy = (minY + maxY) / 2;
+                let eyeRx = (maxX - minX) / 2;
+                let eyeRy = (maxY - minY) / 2;
+                let eyeR = Math.min(eyeRx, eyeRy);
+                
+                if (eyeR <= 0) return null;
+
+                let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
+                for (let y = 0; y < tempCanvas.height; y++) {
+                    for (let x = 0; x < tempCanvas.width; x++) {
+                        let idx = (y * tempCanvas.width + x) * 4;
+                        bMap[y * tempCanvas.width + x] = imgData[idx]*0.3 + imgData[idx+1]*0.59 + imgData[idx+2]*0.11;
+                    }
+                }
+
+                let maxScore = -1; 
+                let bestX = eyeCx; 
+                let bestY = eyeCy;
+                
+                let winR = Math.max(2, Math.floor(eyeR * 0.15));
+
+                for (let y = minY + winR; y <= maxY - winR; y++) {
+                    for (let x = minX + winR; x <= maxX - winR; x++) {
+                        let dx = x - eyeCx;
+                        let dy = y - eyeCy;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        if (dist > eyeR * 0.88) continue; 
+                        
+                        let sum = 0, count = 0;
+                        for(let wy = -winR; wy <= winR; wy++) {
+                            for(let wx = -winR; wx <= winR; wx++) {
+                                if(wx*wx + wy*wy <= winR*winR) {
+                                    sum += bMap[(y+wy)*tempCanvas.width + (x+wx)];
+                                    count++;
+                                }
+                            }
+                        }
+                        let localAvg = sum / count;
+                        
+                        let ny = Math.abs(dy) / eyeR; 
+                        let yWeight = Math.max(0.1, 1 - Math.pow(ny / 0.4, 2)); 
+                        
+                        let score = localAvg * yWeight;
+
+                        if (score > maxScore) { 
+                            maxScore = score; 
+                            bestX = x; 
+                            bestY = y; 
+                        }
+                    }
+                }
+                return { x: bestX / scale, y: bestY / scale };
+            } catch(e) { return null; }
+        }
+
+        function resetView() {
+            let detected = detectBrightCenter(img);
+            let discX = detected ? detected.x : img.width / 2;
+            let discY = detected ? detected.y : img.height / 2;
+
+            let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+            
+            transform.scale = baseScale * imgZoom;
+            transform.x = canvas.width / 2 - discX * transform.scale;
+            transform.y = canvas.height / 2 - discY * transform.scale;
+
+            let cx = canvas.width / 2; let cy = canvas.height / 2;
+            let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
+            
+            let dRy = baseScaledMin * mkrZoom * 0.055; 
+            let dRx = baseScaledMin * mkrZoom * 0.045; 
+            
+            let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
+            let cRy = dRy * currentCDRatio; 
+            let cRx = dRx * currentCDRatio; 
+            
+            pts = {
+                d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
+                c_v1: {x: cx, y: cy - cRy, color: cColor},  c_v2: {x: cx, y: cy + cRy, color: cColor},
+                d_h1: {x: cx - dRx, y: cy, color: dColor}, d_h2: {x: cx + dRx, y: cy, color: dColor},
+                c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
+            };
+            
+            sliderImg.value = imgZoom; 
+            sliderMkr.value = mkrZoom; 
+            sliderAll.value = allZoom;
+
+            draw();
+        }
+
+        function sqr(x) { return x * x; }
+        function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y); }
+
+        function distToSegmentSquared(p, v, w) {
+            let l2 = dist2(v, w);
+            if (l2 === 0) return dist2(p, v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+        }
+
+        function calculateRatio() {
+            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
+            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
+            let vRatio = (discV === 0) ? 0 : (cupV / discV); let hRatio = (discH === 0) ? 0 : (cupH / discH);
+            
+            document.getElementById('vRatio').innerText = vRatio.toFixed(2);
+            document.getElementById('hRatio').innerText = hRatio.toFixed(2);
+
+            if(!isUpdatingCD && document.activeElement !== sliderCD) {
+                sliderCD.value = vRatio.toFixed(2);
+            }
+        }
+
+        function getCenter() {
+            let avgX = 0, avgY = 0;
+            for (let key in pts) { avgX += pts[key].x; avgY += pts[key].y; }
+            return { x: avgX / 8, y: avgY / 8 };
+        }
+
+        function applyZoomImg(factor, cx, cy) {
+            let wx = (cx - transform.x) / transform.scale;
+            let wy = (cy - transform.y) / transform.scale;
+            transform.scale *= factor;
+            transform.x = cx - wx * transform.scale;
+            transform.y = cy - wy * transform.scale;
+        }
+
+        function applyZoomMkr(factor, cx, cy) {
+            for (let key in pts) {
+                pts[key].x = cx + (pts[key].x - cx) * factor;
+                pts[key].y = cy + (pts[key].y - cy) * factor;
+            }
+        }
+
+        function stepZoom(type, delta) {
+            let slider = document.getElementById('slider' + type);
+            let newVal = parseFloat(slider.value) + delta;
+            
+            if (newVal < parseFloat(slider.min)) newVal = parseFloat(slider.min);
+            if (newVal > parseFloat(slider.max)) newVal = parseFloat(slider.max);
+            
+            slider.value = newVal;
+            slider.dispatchEvent(new Event('input'));
+        }
+
+        sliderImg.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            let factor = val / imgZoom;
+            applyZoomImg(factor, canvas.width/2, canvas.height/2);
+            imgZoom = val; draw();
+        });
+
+        sliderMkr.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            let factor = val / mkrZoom;
+            let center = getCenter();
+            applyZoomMkr(factor, center.x, center.y);
+            mkrZoom = val; draw();
+        });
+
+        sliderAll.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            let factor = val / allZoom;
+            let cx = canvas.width/2; let cy = canvas.height/2;
+            applyZoomImg(factor, cx, cy);
+            applyZoomMkr(factor, cx, cy);
+            imgZoom *= factor; sliderImg.value = imgZoom;
+            mkrZoom *= factor; sliderMkr.value = mkrZoom;
+            allZoom = val; draw();
+        });
+
+        function drawMarkersOverlay(context) {
+            if (!showDisc && !showCup) return; 
+            
+            context.save();
+            
+            if (showDisc) {
+                for (let i = 1; i <= 9; i++) {
+                    if (i === 5) continue;
+                    let f = i / 10;
+                    
+                    let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
+                    let vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
+                    context.beginPath();
+                    context.arc(vx, vy, 2.5, 0, Math.PI*2);
+                    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    context.fill();
+                    context.beginPath();
+                    context.arc(vx, vy, 1.5, 0, Math.PI*2);
+                    context.fillStyle = dColor;
+                    context.fill();
+
+                    let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x);
+                    let hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
+                    context.beginPath();
+                    context.arc(hx, hy, 2.5, 0, Math.PI*2);
+                    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    context.fill();
+                    context.beginPath();
+                    context.arc(hx, hy, 1.5, 0, Math.PI*2);
+                    context.fillStyle = dColor;
+                    context.fill();
+                }
+            }
+            context.restore();
+
+            function drawDash(p, key, color) {
+                let dashLen = 14; 
+                context.beginPath();
+                if (key.includes('_v')) {
+                    context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y);
+                } else {
+                    context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2);
+                }
+                context.strokeStyle = '#fff'; context.lineWidth = 5; context.stroke();
+                
+                context.beginPath();
+                if (key.includes('_v')) {
+                    context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y);
+                } else {
+                    context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2);
+                }
+                context.strokeStyle = color; context.lineWidth = 3; context.stroke();
+            }
+            
+            for (let key in pts) {
+                if (key.startsWith('d_') && showDisc) drawDash(pts[key], key, dColor);
+                if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
+            }
+            
+            let center = getCenter();
+            context.beginPath(); context.arc(center.x, center.y, 8, 0, Math.PI*2);
+            context.fillStyle = 'rgba(255, 255, 255, 0.4)'; context.fill();
+            context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
+        }
+
+        function draw() {
+            if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(transform.x, transform.y);
+            ctx.scale(transform.scale, transform.scale);
+            if(img.src) ctx.drawImage(img, 0, 0);
+            ctx.restore();
+
+            drawMarkersOverlay(ctx);
+            calculateRatio();
+
+            if (isTouchMode && (showDisc || showCup) && dragObj && dragObj.type === 'point' && lastMouse) {
+                let magR = 90;     
+                let magZoom = 1.0; 
+                
+                let magX = lastMouse.x;
+                let magY = lastMouse.y - 130; 
+
+                if (magX < magR + 10) magX = magR + 10;
+                if (magX > canvas.width - magR - 10) magX = canvas.width - magR - 10;
+
+                if (magY < 140) { magY = lastMouse.y + 140; }
+                if (magY > canvas.height - magR - 10) { magY = canvas.height - magR - 10; }
+
+                ctx.save();
+                ctx.beginPath(); ctx.arc(magX, magY, magR, 0, Math.PI*2);
+                ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
+                ctx.clip();
+                
+                ctx.fillStyle = '#111'; ctx.fill();
+
+                ctx.translate(magX, magY);
+                ctx.scale(magZoom, magZoom);
+                ctx.translate(-lastMouse.x, -lastMouse.y);
+
+                ctx.save();
+                ctx.translate(transform.x, transform.y);
+                ctx.scale(transform.scale, transform.scale);
+                if(img.src) ctx.drawImage(img, 0, 0);
+                ctx.restore();
+
+                drawMarkersOverlay(ctx);
+                ctx.restore();
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(magX - 8, magY); ctx.lineTo(magX + 8, magY);
+                ctx.moveTo(magX, magY - 8); ctx.lineTo(magX, magY + 8);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function getHitTarget(tx, ty, isTouch) {
+            if (!showDisc && !showCup) return null; 
+
+            let center = getCenter();
+            let dCenter = Math.sqrt(dist2({x: tx, y: ty}, center));
+
+            let minPtDist = Infinity; let closestPt = null; let closestKey = null;
+            let validPts = {};
+            
+            for (let key in pts) {
+                if (key.startsWith('d_') && showDisc) validPts[key] = pts[key];
+                if (key.startsWith('c_') && showCup) validPts[key] = pts[key];
+            }
+
+            for (let key in validPts) {
+                let d = Math.sqrt(dist2({x: tx, y: ty}, validPts[key]));
+                if (d < minPtDist) { minPtDist = d; closestPt = validPts[key]; closestKey = key; }
+            }
+
+            let minLineDist = Infinity; let closestLine = null;
+            let lines = [];
+            if (showDisc) lines.push([pts.d_v1, pts.d_v2], [pts.d_h1, pts.d_h2]);
+            if (showCup) lines.push([pts.c_v1, pts.c_v2], [pts.c_h1, pts.c_h2]);
+
+            for (let i = 0; i < lines.length; i++) {
+                let d = Math.sqrt(distToSegmentSquared({x: tx, y: ty}, lines[i][0], lines[i][1]));
+                if (d < minLineDist) { minLineDist = d; closestLine = lines[i]; }
+            }
+
+            let R_CENTER = isTouch ? 40 : 15;
+            let R_POINT  = isTouch ? 45 : 20;
+            let R_LINE   = isTouch ? 35 : 15;
+
+            if (dCenter <= R_CENTER && dCenter <= minPtDist) {
+                return { type: 'group', lastX: tx, lastY: ty };
+            } 
+            else if (minPtDist <= R_POINT) {
+                return { type: 'point', pt: closestPt, key: closestKey };
+            } 
+            else if (minLineDist <= R_LINE) {
+                return { type: 'line', pts: closestLine, lastX: tx, lastY: ty };
+            }
+            return null; 
+        }
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
+            let mouseX = e.clientX; let mouseY = e.clientY;
+
+            if (e.shiftKey) { 
+                applyZoomImg(zoomFactor, mouseX, mouseY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+            } else if (e.ctrlKey || e.metaKey) { 
+                applyZoomMkr(zoomFactor, mouseX, mouseY);
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+            } else { 
+                applyZoomImg(zoomFactor, mouseX, mouseY);
+                applyZoomMkr(zoomFactor, mouseX, mouseY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+                allZoom *= zoomFactor; sliderAll.value = allZoom;
+            }
+            draw();
+        }, {passive: false});
+
+        canvas.addEventListener('mousedown', e => {
+            if (Date.now() - lastTouchTime < 500) return;
+            
+            isTouchMode = false; 
+            let mouseX = e.clientX; let mouseY = e.clientY;
+            lastMouse = {x: mouseX, y: mouseY}; 
+            
+            dragObj = getHitTarget(mouseX, mouseY, false);
+            isDraggingCanvas = !dragObj;
+            draw();
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (Date.now() - lastTouchTime < 500) return;
+            
+            let mouseX = e.clientX; let mouseY = e.clientY;
+            if (dragObj) {
+                if (dragObj.type === 'group') {
+                    let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                } else if (dragObj.type === 'point') {
+                    let dx = mouseX - dragObj.pt.x;
+                    let dy = mouseY - dragObj.pt.y;
+                    dragObj.pt.x = mouseX; 
+                    dragObj.pt.y = mouseY;
+                    
+                    if (e.altKey) {
+                        let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
+                        if (pts[oppKey]) {
+                            pts[oppKey].x -= dx;
+                            pts[oppKey].y -= dy;
+                        }
+                    }
+                } else if (dragObj.type === 'line') {
+                    let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                    dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
+                    dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
+                    dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                }
+                lastMouse = {x: mouseX, y: mouseY};
+                draw();
+            } else if (isDraggingCanvas) {
+                let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
+                
+                if (e.shiftKey) { 
+                    transform.x += dx; transform.y += dy; 
+                } else if (e.ctrlKey || e.metaKey) { 
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                } else { 
+                    transform.x += dx; transform.y += dy; 
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                }
+                
+                lastMouse = {x: mouseX, y: mouseY};
+                draw();
+            }
+        });
+
+        window.addEventListener('mouseup', e => { 
+            if (Date.now() - lastTouchTime < 500) return;
+            dragObj = null; isDraggingCanvas = false; draw(); 
+        });
+
+        canvas.addEventListener('touchstart', e => {
+            lastTouchTime = Date.now();
+            isTouchMode = true; 
+            if (e.touches.length === 1) {
+                let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
+                lastMouse = { x: tx, y: ty }; 
+                
+                dragObj = getHitTarget(tx, ty, true);
+                isDraggingCanvas = !dragObj;
+                draw(); 
+            } else if (e.touches.length === 2) {
+                lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', e => {
+            if (Date.now() - lastTouchTime > 50) lastTouchTime = Date.now(); 
+            e.preventDefault();
+            if (e.touches.length === 1 && lastMouse) {
+                let mouseX = e.touches[0].clientX; let mouseY = e.touches[0].clientY;
+                if (dragObj) {
+                    if (dragObj.type === 'group') {
+                        let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                        dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                    } else if (dragObj.type === 'point') {
+                        let dx = mouseX - dragObj.pt.x;
+                        let dy = mouseY - dragObj.pt.y;
+                        dragObj.pt.x = mouseX; 
+                        dragObj.pt.y = mouseY;
+                        
+                        if (e.altKey) {
+                            let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
+                            if (pts[oppKey]) {
+                                pts[oppKey].x -= dx;
+                                pts[oppKey].y -= dy;
+                            }
+                        }
+                    } else if (dragObj.type === 'line') {
+                        let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
+                        dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
+                        dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
+                        dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                    }
+                    lastMouse = { x: mouseX, y: mouseY };
+                    draw();
+                } else if (isDraggingCanvas) {
+                    let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
+                    
+                    if (e.shiftKey) { 
+                        transform.x += dx; transform.y += dy; 
+                    } else if (e.ctrlKey || e.metaKey) {
+                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    } else {
+                        transform.x += transform.y += dy; 
+                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    }
+                    
+                    lastMouse = { x: mouseX, y: mouseY };
+                    draw();
+                }
+            } else if (e.touches.length === 2) {
+                let dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                let zoomFactor = dist / lastTouchDist;
+                let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2; let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                
+                applyZoomImg(zoomFactor, centerX, centerY);
+                applyZoomMkr(zoomFactor, centerX, centerY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+                allZoom *= zoomFactor; sliderAll.value = allZoom;
+
+                lastTouchDist = dist; draw();
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('touchend', () => { 
+            lastTouchTime = Date.now();
+            dragObj = null; isDraggingCanvas = false; draw(); 
+        });
+        window.addEventListener('resize', draw);
+    </script>
+</body>
+</html>
