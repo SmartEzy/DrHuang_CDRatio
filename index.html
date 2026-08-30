@@ -27,15 +27,13 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        /* 說明區：更緊湊且完美的左右對齊 */
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
         #instruction td { padding: 3px 2px; vertical-align: middle; }
         #instruction td:first-child { text-align: right; white-space: nowrap; }
-        #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 8px; }
-        
-        /* 專為冒號右側文字設計的 Flexbox 兩端對齊 */
-        .txt-justify { display: flex; justify-content: space-between; width: 3.4rem; }
+        #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
+        #instruction td:last-child { text-align: left; white-space: nowrap; }
+        .txt-justify { display: flex; justify-content: space-between; width: 2.5em; }
 
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 16px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; }
@@ -56,20 +54,21 @@
         input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
 
         #sliderPanel { gap: 12px; }
-        .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 8px; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; }
         
-        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; }
-        .step-btn:hover { background: rgba(255,255,255,0.25); }
-        .step-btn:active { transform: scale(0.9); }
+        /* 實體化的微調按鈕 */
+        .step-btn { background: #444; border: 1px solid #666; color: #fff; border-radius: 6px; width: 28px; height: 28px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; }
+        .step-btn:hover { background: #555; }
+        .step-btn:active { transform: scale(0.9); background: #4cd964; border-color: #4cd964; color: #111; }
 
-        input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
+        input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; margin: 0 4px; }
         input[type=range]:focus { outline: none; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; margin-top: -5px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: 0.1s; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #555; border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #ddd; cursor: pointer; margin-top: -6px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: 0.1s; }
         input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); background: #fff; }
-        input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
-        input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+        input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: #555; border-radius: 3px; }
+        input[type=range]::-moz-range-thumb { height: 18px; width: 18px; border-radius: 50%; background: #ddd; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; }
 
@@ -81,7 +80,8 @@
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
-            input[type=range] { width: 80px; }
+            input[type=range] { width: 70px; }
+            .step-btn { width: 26px; height: 26px; font-size: 1.1rem; }
         }
     </style>
 </head>
@@ -102,7 +102,6 @@
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
     
-    <!-- 更新排版，使用 flexbox 兩端對齊冒號右側文字 -->
     <div id="instruction">
         <table>
             <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>&amp;</span><span>尺</span></div></td></tr>
@@ -174,9 +173,10 @@
         let pts = {};
         let transform = { scale: 1, x: 0, y: 0 };
         
-        let imgZoom = 1.0;
-        let mkrZoom = 1.0;
-        let allZoom = 1.0;
+        // 【核心升級】將縮放比例宣告為全域變數，實現跨圖片記憶功能！
+        let imgZoom = 3.5;
+        let mkrZoom = 3.5;
+        let allZoom = 3.5;
 
         let dragObj = null; 
         let isDraggingCanvas = false;
@@ -312,18 +312,21 @@
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
 
-            let targetZoom = 3.5; 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
-            transform.scale = baseScale * targetZoom;
-
+            
+            // 套用全域記憶的圖片放大倍率
+            transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discX * transform.scale;
             transform.y = canvas.height / 2 - discY * transform.scale;
 
             let cx = canvas.width / 2; let cy = canvas.height / 2;
+            let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            let scaledMin = Math.min(img.width * transform.scale, img.height * transform.scale);
-            let dRy = scaledMin * 0.065; let dRx = scaledMin * 0.055; 
-            let cRy = scaledMin * 0.032; let cRx = scaledMin * 0.028; 
+            // 【核心升級】初始標記整體縮小 20%，並直接乘上全域記憶的 mkrZoom
+            let dRy = baseScaledMin * mkrZoom * 0.052; 
+            let dRx = baseScaledMin * mkrZoom * 0.044; 
+            let cRy = baseScaledMin * mkrZoom * 0.025; 
+            let cRx = baseScaledMin * mkrZoom * 0.022; 
             
             pts = {
                 d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
@@ -332,8 +335,10 @@
                 c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
             };
             
-            imgZoom = targetZoom; mkrZoom = targetZoom; allZoom = targetZoom;
-            sliderImg.value = targetZoom; sliderMkr.value = targetZoom; sliderAll.value = targetZoom;
+            // 將記憶的值同步回拉桿 UI 上
+            sliderImg.value = imgZoom; 
+            sliderMkr.value = mkrZoom; 
+            sliderAll.value = allZoom;
 
             draw();
         }
