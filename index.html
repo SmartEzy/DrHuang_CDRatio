@@ -125,7 +125,8 @@
             <div class="action-item seg-group">
                 <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
                 <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')">Disc</button>
-                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">C/D</button>
+                <!-- 改為 ALL -->
+                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
             </div>
             <div class="action-item">
                 <button class="action-btn" onclick="resetView()">置中</button>
@@ -310,18 +311,13 @@
             isUpdatingCD = false; 
         }
 
-        // ==========================================
-        // 核心更新：C/D 按鈕吸附邏輯 (無條件進位/退位至 0.1)
-        // ==========================================
         function stepCD(direction) {
             let current = parseFloat(sliderCD.value);
             let newVal;
             
             if (direction > 0) {
-                // 往上按：直接找下一個整齊的 0.1 (例如 0.56 -> 0.60)
                 newVal = Math.floor(current * 10 + 1.001) / 10;
             } else {
-                // 往下按：直接找上一個整齊的 0.1 (例如 0.56 -> 0.50)
                 newVal = Math.ceil(current * 10 - 1.001) / 10;
             }
 
