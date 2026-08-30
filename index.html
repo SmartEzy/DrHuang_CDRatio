@@ -112,7 +112,7 @@
     </div>
 
     <div id="topBar">
-        <button class="setting-btn" onclick="openKeySettings()">⚙️ API Key</button>
+        <button class="setting-btn" onclick="openSystemSettings()">⚙️ 系統設定</button>
     </div>
 
     <div id="dropZone" onclick="document.getElementById('fileInput').click()">
@@ -225,19 +225,32 @@
         let showCup = false;  
         let showDisc = true;  
 
+        // 【新增】本地端安全管理：API Key 與 模型名稱
         function getSavedApiKey() {
             return localStorage.getItem('cdratio_gemini_api_key') || '';
         }
+        
+        function getSavedModelName() {
+            // 預設使用最新的 3 系列 Flash 模型
+            return localStorage.getItem('cdratio_gemini_model') || 'gemini-3-flash';
+        }
 
-        function openKeySettings() {
+        // 【新增】兩階段設定視窗
+        function openSystemSettings() {
             let currentKey = getSavedApiKey();
-            let newKey = prompt('請貼上您的 Google Gemini API Key：\n(金鑰僅儲存在您目前的瀏覽器本地端，安全無虞)', currentKey);
+            let newKey = prompt('[步驟 1/2]\n請貼上您的 Google Gemini API Key：\n(金鑰僅儲存在本地端，安全無虞)', currentKey);
+            
             if (newKey !== null) {
                 localStorage.setItem('cdratio_gemini_api_key', newKey.trim());
-                if (newKey.trim()) {
-                    showToast('✅ API Key 已安全儲存');
+                
+                let currentModel = getSavedModelName();
+                let newModel = prompt('[步驟 2/2]\n請確認要使用的 AI 模型名稱：\n(未來若 Google 推出新版，可直接在此修改)', currentModel);
+                
+                if (newModel !== null && newModel.trim() !== '') {
+                    localStorage.setItem('cdratio_gemini_model', newModel.trim());
+                    showToast('✅ 系統設定已更新並儲存！');
                 } else {
-                    showToast('ℹ️ 已清除 API Key');
+                    showToast('✅ API Key 已更新');
                 }
             }
         }
@@ -295,7 +308,7 @@
         async function runAILocalization() {
             let apiKey = getSavedApiKey();
             if (!apiKey) {
-                openKeySettings();
+                openSystemSettings();
                 apiKey = getSavedApiKey();
                 if (!apiKey) return;
             }
@@ -305,7 +318,9 @@
                 return;
             }
 
-            showToast('⚡ AI 視神經結構分析中...');
+            // 【動態套用模型名稱】
+            let modelName = getSavedModelName();
+            showToast(`⚡ AI (${modelName}) 分析中...`);
 
             try {
                 const base64Data = rawBase64.split(',')[1];
@@ -320,8 +335,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0}
 }`;
 
-                // 【真正正確的模型名稱：gemini-1.5-flash】
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // 將寫死的名稱替換為變數 modelName
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
