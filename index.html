@@ -44,7 +44,6 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* === 動作面板與三段式按鈕 === */
         #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
@@ -58,7 +57,6 @@
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
         .seg-btn:active { transform: scale(0.90); }
 
-        /* 滑桿區設定 */
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
@@ -123,7 +121,6 @@
     </div>
 
     <div id="rightControls">
-        <!-- 採用醫療級三段式按鈕 -->
         <div class="panel-box" id="actionPanel">
             <div class="action-item seg-group">
                 <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
@@ -141,9 +138,9 @@
         <div class="panel-box" id="sliderPanel">
             <div class="ctrl-group">
                 <span>C/D</span>
-                <button class="step-btn" onclick="stepCD(-0.1)">-</button>
+                <button class="step-btn" onclick="stepCD(-1)">-</button>
                 <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
-                <button class="step-btn" onclick="stepCD(0.1)">+</button>
+                <button class="step-btn" onclick="stepCD(1)">+</button>
             </div>
             <div class="divider"></div>
             <div class="ctrl-group">
@@ -204,9 +201,8 @@
         let lastTouchTime = 0; 
         let isUpdatingCD = false; 
 
-        // 獨立雙標記狀態
-        let showCup = false;  // 預設隱藏綠色 Cup
-        let showDisc = true;  // 預設顯示紅色 Disc 與十分割點
+        let showCup = false;  
+        let showDisc = true;  
 
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
@@ -236,7 +232,6 @@
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     
-                    // 初始設定：只顯示 Disc (紅)，隱藏 Cup (綠)
                     showCup = false;
                     showDisc = true;
                     updateSegUI();
@@ -248,14 +243,12 @@
             reader.readAsDataURL(file);
         }
 
-        // 三段式按鈕控制邏輯
         function toggleSeg(type) {
             if (type === 'Cup') {
                 showCup = !showCup;
             } else if (type === 'Disc') {
                 showDisc = !showDisc;
             } else if (type === 'All') {
-                // 如果兩者都開著，就一鍵全關；否則一鍵全開
                 if (showCup && showDisc) {
                     showCup = false;
                     showDisc = false;
@@ -268,7 +261,6 @@
             draw();
         }
 
-        // 更新按鈕的發光 UI 狀態
         function updateSegUI() {
             const btnCup = document.getElementById('btnCup');
             const btnDisc = document.getElementById('btnDisc');
@@ -290,7 +282,6 @@
             isUpdatingCD = true; 
             let targetV = parseFloat(ratioVal);
             
-            // 滑桿防呆：自動喚醒 Cup 與 Disc
             if (!showCup || !showDisc) {
                 showCup = true;
                 showDisc = true;
@@ -319,10 +310,24 @@
             isUpdatingCD = false; 
         }
 
-        function stepCD(delta) {
-            let newVal = parseFloat(sliderCD.value) + delta;
+        // ==========================================
+        // 核心更新：C/D 按鈕吸附邏輯 (無條件進位/退位至 0.1)
+        // ==========================================
+        function stepCD(direction) {
+            let current = parseFloat(sliderCD.value);
+            let newVal;
+            
+            if (direction > 0) {
+                // 往上按：直接找下一個整齊的 0.1 (例如 0.56 -> 0.60)
+                newVal = Math.floor(current * 10 + 1.001) / 10;
+            } else {
+                // 往下按：直接找上一個整齊的 0.1 (例如 0.56 -> 0.50)
+                newVal = Math.ceil(current * 10 - 1.001) / 10;
+            }
+
             if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
             if (newVal > parseFloat(sliderCD.max)) newVal = parseFloat(sliderCD.max);
+            
             sliderCD.value = newVal.toFixed(2);
             setCDRatio(sliderCD.value);
         }
@@ -527,7 +532,6 @@
             
             context.save();
             
-            // 只有當 Disc 開啟時，才顯示十分割點
             if (showDisc) {
                 for (let i = 1; i <= 9; i++) {
                     if (i === 5) continue;
@@ -577,7 +581,6 @@
                 context.strokeStyle = color; context.lineWidth = 3; context.stroke();
             }
             
-            // 根據獨立開關決定要畫哪些端點
             for (let key in pts) {
                 if (key.startsWith('d_') && showDisc) drawDash(pts[key], key, dColor);
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
