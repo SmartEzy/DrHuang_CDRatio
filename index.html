@@ -38,22 +38,24 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* 動作按鈕區：極窄寬度，並將標記往右推 */
-        #actionPanel { width: 90px; gap: 10px; align-items: stretch; }
-        .action-item { display: flex; align-items: center; justify-content: flex-end; height: 28px; width: 100%; box-sizing: border-box; }
+        /* 動作按鈕區：強制固定寬度，並讓內部元素撐滿對齊 */
+        #actionPanel { width: 106px; gap: 10px; align-items: stretch; padding: 12px 14px; }
+        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
         .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        .toggle-container { gap: 8px; cursor: pointer; padding-right: 2px; }
-        /* 使用 margin-left 將標記往右推，對齊視覺邊界 */
-        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin-left: 6px; }
-        .switch { position: relative; width: 42px; height: 24px; display: inline-block; flex-shrink: 0; }
+        /* 標記區改為置中對齊，消除文字視覺偏離 */
+        .toggle-container { gap: 8px; cursor: pointer; margin: 0; justify-content: center; }
+        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; text-align: center; }
+        
+        /* 完美修正 Toggle Switch 比例，避免白圓點超出 */
+        .switch { position: relative; width: 44px; height: 24px; display: inline-block; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
-        .slider-toggle:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        .slider-toggle:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: #ddd; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
         input:checked + .slider-toggle { background-color: #4cd964; }
-        input:checked + .slider-toggle:before { transform: translateX(18px); background-color: #fff; }
+        input:checked + .slider-toggle:before { transform: translateX(20px); background-color: #fff; }
 
         #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
@@ -83,7 +85,8 @@
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
-            #actionPanel { width: 85px; } /* 手機版窄框 */
+            /* 手機版動作面板寬度調整，依然撐滿按鈕 */
+            #actionPanel { width: 106px; padding: 10px; } 
             input[type=range] { width: 80px; }
         }
     </style>
@@ -114,6 +117,7 @@
     </div>
 
     <div id="rightControls">
+        <!-- 動作區：標記置中對齊，按鈕寬度完美一致 -->
         <div class="panel-box" id="actionPanel">
             <label class="toggle-container action-item">
                 <span>標記</span>
@@ -194,7 +198,7 @@
         let lastTouchDist = 0;
         
         let isTouchMode = false; 
-        let lastTouchTime = 0; // 用於阻擋手機瀏覽器產生的幽靈滑鼠事件
+        let lastTouchTime = 0; 
         let showMarkers = true;  
 
         window.addEventListener('dragover', (e) => e.preventDefault());
@@ -240,33 +244,36 @@
             draw();
         }
 
+        // ==========================================
+        // 核心邏輯修復：以 Disc 大小為絕對基準，徹底解決 0 比例卡死問題
+        // ==========================================
         function setCDRatio(ratioVal) {
-            let targetV = parseFloat(ratioVal);
+            let ratio = parseFloat(ratioVal);
             if (!showMarkers) {
                 showMarkers = true;
                 markerToggle.checked = true;
             }
 
+            // 直接讀取目前紅線 (Disc) 的真實寬度與高度
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
-            let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
-            let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
 
-            let currentV = (discV === 0) ? 0 : (cupV / discV);
-            if (currentV === 0) currentV = 0.5; 
+            // 用 Disc 大小去乘上指定的比例，決定新的 Cup 大小
+            let targetCupV = discV * ratio;
+            let targetCupH = discH * ratio;
 
-            let scaleFactor = targetV / currentV;
-
+            // 垂直方向更新綠線座標
             let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
-            pts.c_v1.y = dv_cy - (cupV / 2) * scaleFactor;
+            pts.c_v1.y = dv_cy - (targetCupV / 2);
             pts.c_v1.x = pts.d_v1.x; 
-            pts.c_v2.y = dv_cy + (cupV / 2) * scaleFactor;
+            pts.c_v2.y = dv_cy + (targetCupV / 2);
             pts.c_v2.x = pts.d_v2.x; 
 
+            // 水平方向更新綠線座標
             let dh_cx = (pts.d_h1.x + pts.d_h2.x) / 2;
-            pts.c_h1.x = dh_cx - (cupH / 2) * scaleFactor;
+            pts.c_h1.x = dh_cx - (targetCupH / 2);
             pts.c_h1.y = pts.d_h1.y; 
-            pts.c_h2.x = dh_cx + (cupH / 2) * scaleFactor;
+            pts.c_h2.x = dh_cx + (targetCupH / 2);
             pts.c_h2.y = pts.d_h2.y;
 
             draw();
@@ -478,10 +485,9 @@
         function drawMarkersOverlay(context) {
             if (!showMarkers) return; 
             
-            // 繪製十等份點狀刻度
             context.save();
             for (let i = 1; i <= 9; i++) {
-                if (i === 5) continue; // 隱藏中點，讓給中央白圈
+                if (i === 5) continue;
                 let f = i / 10;
                 
                 let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
@@ -649,7 +655,6 @@
         }, {passive: false});
 
         canvas.addEventListener('mousedown', e => {
-            // 阻擋手機虛假 Mouse 事件 (Ghost click)
             if (Date.now() - lastTouchTime < 500) return;
             
             isTouchMode = false; 
@@ -718,7 +723,7 @@
         }, {passive: false});
 
         canvas.addEventListener('touchmove', e => {
-            if (Date.now() - lastTouchTime > 50) lastTouchTime = Date.now(); // 持續更新 Touch 時間
+            if (Date.now() - lastTouchTime > 50) lastTouchTime = Date.now(); 
             e.preventDefault();
             if (e.touches.length === 1 && lastMouse) {
                 let mouseX = e.touches[0].clientX; let mouseY = e.touches[0].clientY;
