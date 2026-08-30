@@ -117,6 +117,7 @@
             <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>&amp;</span><span>尺</span></div></td></tr>
             <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
             <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
+            <tr><td><b>+Opt/Alt</b></td><td>:</td><td><div class="txt-justify"><span>對</span><span>稱</span></div></td></tr>
         </table>
     </div>
 
@@ -650,7 +651,7 @@
             let center = getCenter();
             let dCenter = Math.sqrt(dist2({x: tx, y: ty}, center));
 
-            let minPtDist = Infinity; let closestPt = null;
+            let minPtDist = Infinity; let closestPt = null; let closestKey = null;
             let validPts = {};
             
             for (let key in pts) {
@@ -660,7 +661,7 @@
 
             for (let key in validPts) {
                 let d = Math.sqrt(dist2({x: tx, y: ty}, validPts[key]));
-                if (d < minPtDist) { minPtDist = d; closestPt = validPts[key]; }
+                if (d < minPtDist) { minPtDist = d; closestPt = validPts[key]; closestKey = key; }
             }
 
             let minLineDist = Infinity; let closestLine = null;
@@ -681,7 +682,7 @@
                 return { type: 'group', lastX: tx, lastY: ty };
             } 
             else if (minPtDist <= R_POINT) {
-                return { type: 'point', pt: closestPt };
+                return { type: 'point', pt: closestPt, key: closestKey };
             } 
             else if (minLineDist <= R_LINE) {
                 return { type: 'line', pts: closestLine, lastX: tx, lastY: ty };
@@ -732,7 +733,18 @@
                     for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                 } else if (dragObj.type === 'point') {
-                    dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                    let dx = mouseX - dragObj.pt.x;
+                    let dy = mouseY - dragObj.pt.y;
+                    dragObj.pt.x = mouseX; 
+                    dragObj.pt.y = mouseY;
+                    
+                    if (e.altKey) {
+                        let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
+                        if (pts[oppKey]) {
+                            pts[oppKey].x -= dx;
+                            pts[oppKey].y -= dy;
+                        }
+                    }
                 } else if (dragObj.type === 'line') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                     dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
@@ -789,7 +801,18 @@
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                     } else if (dragObj.type === 'point') {
-                        dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                        let dx = mouseX - dragObj.pt.x;
+                        let dy = mouseY - dragObj.pt.y;
+                        dragObj.pt.x = mouseX; 
+                        dragObj.pt.y = mouseY;
+                        
+                        if (e.altKey) {
+                            let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
+                            if (pts[oppKey]) {
+                                pts[oppKey].x -= dx;
+                                pts[oppKey].y -= dy;
+                            }
+                        }
                     } else if (dragObj.type === 'line') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                         dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
@@ -806,7 +829,7 @@
                     } else if (e.ctrlKey || e.metaKey) {
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     } else {
-                        transform.x += dx; transform.y += dy; 
+                        transform.x += transform.y += dy; 
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     }
                     
