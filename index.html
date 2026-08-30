@@ -18,7 +18,7 @@
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
         
-        #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; }
+        #dropZone { width: 85%; max-width: 400px; height: 220px; border: 2px dashed #666; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 1.1rem; background: #222; text-align: center; padding: 20px; pointer-events: none; }
         #fileInput { display: none; }
         
         #infoBar { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 8px 20px; border-radius: 30px; font-size: 1.4rem; z-index: 10; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); white-space: nowrap; }
@@ -38,7 +38,6 @@
         .action-btn { flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; }
         .action-btn:active { background: #222; transform: scale(0.97); }
 
-        /* 修正開關排版，改為向左對齊並設定間距 */
         .toggle-container { display: flex; align-items: center; justify-content: flex-start; gap: 12px; cursor: pointer; margin-top: 4px; }
         .toggle-container span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; }
         .switch { position: relative; width: 42px; height: 24px; }
@@ -81,8 +80,9 @@
         <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
     </div>
 
-    <div id="dropZone" onclick="document.getElementById('fileInput').click()">
-        點擊選擇圖片，或將眼底圖拖曳至此
+    <!-- 點擊背景任一處觸發換圖 -->
+    <div id="dropZone" style="pointer-events: auto;" onclick="document.getElementById('fileInput').click()">
+        點擊畫面選擇圖片，或將眼底圖拖曳至視窗內
         <input type="file" id="fileInput" accept="image/*" />
     </div>
 
@@ -93,9 +93,9 @@
     
     <div id="instruction">
         <table>
-            <tr><td><b>滾輪</b></td><td>:</td><td>圖片縮放</td></tr>
-            <tr><td><b>Shift+滾輪</b></td><td>:</td><td>尺標縮放</td></tr>
-            <tr><td><b>Ctrl+滾輪</b></td><td>:</td><td>同步縮放</td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>圖片 & 尺標 (同步)</td></tr>
+            <tr><td><b>Shift + 操作</b></td><td>:</td><td>單獨圖片</td></tr>
+            <tr><td><b>Ctrl + 操作</b></td><td>:</td><td>單獨尺標</td></tr>
         </table>
     </div>
 
@@ -166,17 +166,22 @@
         let isTouchMode = false; 
         let showMarkers = true;  
 
+        // ==========================================
+        // 升級 1：全域拖曳換圖 (Global Drag & Drop)
+        // ==========================================
+        window.addEventListener('dragover', (e) => e.preventDefault());
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleImage(e.dataTransfer.files[0]);
+            }
+        });
+
         fileInput.addEventListener('change', (e) => {
             if (e.target.files && e.target.files.length > 0) {
                 handleImage(e.target.files[0]);
                 e.target.value = ''; 
             }
-        });
-
-        dropZone.addEventListener('dragover', (e) => e.preventDefault());
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleImage(e.dataTransfer.files[0]);
         });
 
         function handleImage(file) {
@@ -185,7 +190,6 @@
             reader.onload = (event) => {
                 img.onload = () => {
                     logoText.style.display = 'none';
-                    
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
@@ -212,7 +216,7 @@
         }
 
         // ==========================================
-        // 核心升級 2.0：終極防誤判演算法 (強制雷達掃描)
+        // 升級 3：眼底邊界偵測 AI (Fundus Bounding Box)
         // ==========================================
         function detectBrightCenter(image) {
             try {
@@ -225,29 +229,42 @@
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
-                let maxBrightness = 0; 
-                let bestX = tempCanvas.width / 2; 
-                let bestY = tempCanvas.height / 2;
+                // 第一階段：找出真正眼球的邊界 (Bounding Box) 避開黑邊
+                let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
+                for (let i = 0; i < imgData.length; i += 4) {
+                    if (imgData[i] > 15) { // 只要紅色通道大於 15 就視為眼球範圍
+                        let px = (i / 4) % tempCanvas.width;
+                        let py = Math.floor((i / 4) / tempCanvas.width);
+                        if (px < minX) minX = px; if (px > maxX) maxX = px;
+                        if (py < minY) minY = py; if (py > maxY) maxY = py;
+                    }
+                }
                 
-                let cx = tempCanvas.width / 2;
-                let cy = tempCanvas.height / 2;
-                // 強制縮小掃描半徑，只允許中心 65% 的區域被掃描，徹底斷絕邊緣反光！
-                let maxRadius = Math.min(cx, cy) * 0.65; 
+                let eyeCx = (minX + maxX) / 2;
+                let eyeCy = (minY + maxY) / 2;
+                let eyeR = Math.min(maxX - minX, maxY - minY) / 2;
+                
+                // 第二階段：設定安全掃描區，嚴格剃除外圍 35% 範圍 (防護邊緣曝光干擾)
+                let searchR = eyeR * 0.65; 
+
+                let maxBrightness = 0; 
+                let bestX = eyeCx; 
+                let bestY = eyeCy;
                 
                 for (let y = 0; y < tempCanvas.height; y++) {
                     for (let x = 0; x < tempCanvas.width; x++) {
-                        let dx = x - cx;
-                        let dy = y - cy;
+                        let dx = x - eyeCx;
+                        let dy = y - eyeCy;
                         let dist = Math.sqrt(dx*dx + dy*dy);
                         
-                        // 任何超過半徑 65% 的亮點直接無視
-                        if (dist > maxRadius) continue; 
+                        // 只要超過安全半徑，連掃都不掃！
+                        if (dist > searchR) continue; 
                         
                         let idx = (y * tempCanvas.width + x) * 4;
                         let brightness = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
                         
-                        // 距離中心越遠，光點分數打折越重
-                        let centerBias = 1 - (dist / maxRadius) * 0.4; 
+                        // 越靠近眼球中心，權重越高，確保鎖定 Disc
+                        let centerBias = 1 - (dist / searchR) * 0.3; 
                         let weightedBrightness = brightness * centerBias;
 
                         if (weightedBrightness > maxBrightness) { 
@@ -495,24 +512,26 @@
             return null; 
         }
 
+        // ==========================================
+        // 升級 2：操作邏輯統一化 (滾輪與拖曳均適用修飾鍵)
+        // ==========================================
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
             let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
             let mouseX = e.clientX; let mouseY = e.clientY;
 
-            if (e.shiftKey) { 
-                let center = getCenter();
-                applyZoomMkr(zoomFactor, center.x, center.y);
+            if (e.shiftKey) { // Shift = 單獨圖片
+                applyZoomImg(zoomFactor, mouseX, mouseY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+            } else if (e.ctrlKey || e.metaKey) { // Ctrl = 單獨尺標
+                applyZoomMkr(zoomFactor, mouseX, mouseY);
                 mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
-            } else if (e.ctrlKey || e.metaKey) { 
+            } else { // 預設 = 同步
                 applyZoomImg(zoomFactor, mouseX, mouseY);
                 applyZoomMkr(zoomFactor, mouseX, mouseY);
                 imgZoom *= zoomFactor; sliderImg.value = imgZoom;
                 mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
                 allZoom *= zoomFactor; sliderAll.value = allZoom;
-            } else { 
-                applyZoomImg(zoomFactor, mouseX, mouseY);
-                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
             }
             draw();
         }, {passive: false});
@@ -546,8 +565,16 @@
                 draw();
             } else if (isDraggingCanvas) {
                 let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
-                transform.x += dx; transform.y += dy; 
-                for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                
+                // 拖曳背景時也遵從統一規則
+                if (e.shiftKey) { // 單獨拖曳圖片
+                    transform.x += dx; transform.y += dy; 
+                } else if (e.ctrlKey || e.metaKey) { // 單獨拖曳尺標
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                } else { // 同步拖曳
+                    transform.x += dx; transform.y += dy; 
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                }
                 
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
@@ -590,9 +617,17 @@
                     lastMouse = { x: mouseX, y: mouseY };
                     draw();
                 } else if (isDraggingCanvas) {
+                    // 手機觸控通常沒有鍵盤，預設為同步拖曳
                     let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
-                    transform.x += dx; transform.y += dy; 
-                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    
+                    if (e.shiftKey) { 
+                        transform.x += dx; transform.y += dy; 
+                    } else if (e.ctrlKey || e.metaKey) {
+                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    } else {
+                        transform.x += dx; transform.y += dy; 
+                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    }
                     
                     lastMouse = { x: mouseX, y: mouseY };
                     draw();
