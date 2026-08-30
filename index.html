@@ -39,6 +39,17 @@
         
         #statusToast { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; color: #4cd964; padding: 10px 20px; border-radius: 20px; font-size: 0.9rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; text-align: center; }
 
+        /* 【新增】載入中動畫遮罩 */
+        #loadingOverlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.65); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: #fff; font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; }
+
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
         #instruction td { padding: 3px 2px; vertical-align: middle; }
@@ -105,6 +116,12 @@
     </style>
 </head>
 <body>
+
+    <!-- 【新增】載入中動畫遮罩 -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">⚡ 影像上傳與 AI 分析中，請稍候...</div>
+    </div>
 
     <div id="logo">
         <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
@@ -191,6 +208,7 @@
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
         const statusToast = document.getElementById('statusToast');
+        const loadingOverlay = document.getElementById('loadingOverlay');
         const instruction = document.getElementById('instruction');
         const rightControls = document.getElementById('rightControls');
         
@@ -225,17 +243,9 @@
         let showCup = false;  
         let showDisc = true;  
 
-        // 【新增】本地端安全管理：API Key 與 模型名稱
-        function getSavedApiKey() {
-            return localStorage.getItem('cdratio_gemini_api_key') || '';
-        }
-        
-        function getSavedModelName() {
-            // 預設使用最新的 3 系列 Flash 模型
-            return localStorage.getItem('cdratio_gemini_model') || 'gemini-3-flash';
-        }
+        function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
+        function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3-flash-preview'; }
 
-        // 【新增】兩階段設定視窗
         function openSystemSettings() {
             let currentKey = getSavedApiKey();
             let newKey = prompt('[步驟 1/2]\n請貼上您的 Google Gemini API Key：\n(金鑰僅儲存在本地端，安全無虞)', currentKey);
@@ -318,24 +328,27 @@
                 return;
             }
 
-            // 【動態套用模型名稱】
+            // 【新增】開啟全螢幕載入遮罩
+            loadingOverlay.style.display = 'flex';
             let modelName = getSavedModelName();
-            showToast(`⚡ AI (${modelName}) 分析中...`);
 
             try {
                 const base64Data = rawBase64.split(',')[1];
                 const mimeType = rawBase64.split(',')[0].split(':')[1].split(';')[0];
 
+                // 【優化】加強醫學解剖特徵的 Prompt 指令，引導 AI 更精準尋找
                 const promptText = `
-You are an expert ophthalmology AI. Analyze this fundus photograph.
+You are an expert ophthalmologist AI. Analyze this fundus/OCT photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
+- The Optic Disc (OD) is the well-defined yellowish/pale oval structure where vessels converge.
+- The Optic Cup (OC) is the brighter, central depression within the Optic Disc.
+Provide tight and accurate bounding boxes.
 Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to image width and height) using this exact schema:
 {
   "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0}
 }`;
 
-                // 將寫死的名稱替換為變數 modelName
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
                 const response = await fetch(url, {
@@ -368,7 +381,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
 
                 if (coords.disc && coords.cup) {
                     applyAICoordinates(coords);
-                    showToast('✨ AI 定位完成！可手動微調');
+                    showToast('✨ AI 定位完成！可進行手動微調');
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
@@ -376,6 +389,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             } catch (err) {
                 console.error("AI 分析發生錯誤:", err);
                 showToast('⚠️ AI 失敗，已切換手動模式: ' + err.message.substring(0, 150));
+            } finally {
+                // 【新增】無論成功或失敗，都關閉載入遮罩
+                loadingOverlay.style.display = 'none';
             }
         }
 
