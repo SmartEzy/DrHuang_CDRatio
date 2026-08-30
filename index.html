@@ -36,20 +36,19 @@
         .txt-justify { display: flex; justify-content: space-between; width: 2.5em; }
 
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
-        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
+        .panel-box { background: rgba(0,0,0,0.75); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
         
-        /* 動作按鈕區：強制固定寬度，並讓內部元素撐滿對齊 */
-        #actionPanel { width: 106px; gap: 10px; align-items: stretch; padding: 12px 14px; }
-        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
+        /* 動作按鈕區：微調寬度，讓內部有完美空間分配 */
+        #actionPanel { width: 116px; padding: 12px; gap: 10px; align-items: stretch; }
+        .action-item { display: flex; align-items: center; height: 28px; width: 100%; box-sizing: border-box; }
         
         .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
 
-        /* 標記區改為置中對齊，消除文字視覺偏離 */
-        .toggle-container { gap: 8px; cursor: pointer; margin: 0; justify-content: center; }
-        .toggle-container span { color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; text-align: center; }
+        /* 標記區排版：消除 gap，透過 flex: 1 與 text-align 自動等分左右空白 */
+        .toggle-container { gap: 0; cursor: pointer; margin: 0; }
+        .toggle-container span { flex: 1; text-align: center; color: #ddd; font-size: 0.95rem; font-weight: bold; white-space: nowrap; margin: 0; }
         
-        /* 完美修正 Toggle Switch 比例，避免白圓點超出 */
         .switch { position: relative; width: 44px; height: 24px; display: inline-block; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
@@ -57,7 +56,8 @@
         input:checked + .slider-toggle { background-color: #4cd964; }
         input:checked + .slider-toggle:before { transform: translateX(20px); background-color: #fff; }
 
-        #sliderPanel { gap: 12px; }
+        /* 滑桿區設定 */
+        #sliderPanel { padding: 14px; gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
         
@@ -84,9 +84,8 @@
             #infoBar { top: 15px; left: auto; right: 15px; transform: none; font-size: 1rem; padding: 6px 12px; }
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
-            .panel-box { padding: 12px; border-radius: 12px; }
-            /* 手機版動作面板寬度調整，依然撐滿按鈕 */
-            #actionPanel { width: 106px; padding: 10px; } 
+            #sliderPanel { padding: 12px; }
+            #actionPanel { width: 110px; padding: 10px; } 
             input[type=range] { width: 80px; }
         }
     </style>
@@ -117,7 +116,7 @@
     </div>
 
     <div id="rightControls">
-        <!-- 動作區：標記置中對齊，按鈕寬度完美一致 -->
+        <!-- 動作區 -->
         <div class="panel-box" id="actionPanel">
             <label class="toggle-container action-item">
                 <span>標記</span>
@@ -244,32 +243,25 @@
             draw();
         }
 
-        // ==========================================
-        // 核心邏輯修復：以 Disc 大小為絕對基準，徹底解決 0 比例卡死問題
-        // ==========================================
         function setCDRatio(ratioVal) {
-            let ratio = parseFloat(ratioVal);
+            let targetV = parseFloat(ratioVal);
             if (!showMarkers) {
                 showMarkers = true;
                 markerToggle.checked = true;
             }
 
-            // 直接讀取目前紅線 (Disc) 的真實寬度與高度
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
 
-            // 用 Disc 大小去乘上指定的比例，決定新的 Cup 大小
-            let targetCupV = discV * ratio;
-            let targetCupH = discH * ratio;
+            let targetCupV = discV * targetV;
+            let targetCupH = discH * targetV;
 
-            // 垂直方向更新綠線座標
             let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
             pts.c_v1.y = dv_cy - (targetCupV / 2);
             pts.c_v1.x = pts.d_v1.x; 
             pts.c_v2.y = dv_cy + (targetCupV / 2);
             pts.c_v2.x = pts.d_v2.x; 
 
-            // 水平方向更新綠線座標
             let dh_cx = (pts.d_h1.x + pts.d_h2.x) / 2;
             pts.c_h1.x = dh_cx - (targetCupH / 2);
             pts.c_h1.y = pts.d_h1.y; 
