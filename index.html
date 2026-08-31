@@ -20,7 +20,9 @@
         }
         
         #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
-        #logoText { margin-left: 12px; font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
+        .logo-text-group { margin-left: 12px; display: flex; flex-direction: column; }
+        #logoText { font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
+        #logoSubText { font-size: 0.75rem; color: #888; margin-top: 2px; letter-spacing: 0.5px; }
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
         
@@ -119,7 +121,9 @@
         @media (max-width: 600px) {
             #logo { top: 12px; left: 15px; }
             #logo img { height: 28px !important; }
-            #logoText { font-size: 1.1rem; margin-left: 8px; }
+            .logo-text-group { margin-left: 8px; }
+            #logoText { font-size: 1.1rem; }
+            #logoSubText { font-size: 0.65rem; }
             #topBar { top: 15px; right: 15px; }
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; }
@@ -154,13 +158,16 @@
     <!-- 支援中斷的載入遮罩 -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
-        <div class="loading-text">⚡ AI 分析中...</div>
-        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 中斷 AI 分析</button>
+        <div class="loading-text">⚡ 分析中...</div>
+        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 中斷改手動標記</button>
     </div>
 
     <div id="logo">
         <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
-        <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
+        <div class="logo-text-group">
+            <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
+            <span id="logoSubText"></span>
+        </div>
     </div>
 
     <div id="topBar">
@@ -276,6 +283,12 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
+        // 即時更新左上角模型名稱
+        function updateLogoModelName() {
+            document.getElementById('logoSubText').innerText = getSavedModelName();
+        }
+        updateLogoModelName(); // 頁面載入時先執行一次
+
         function openSystemSettings() {
             document.getElementById('apiKeyInput').value = getSavedApiKey();
             document.getElementById('modelInput').value = getSavedModelName();
@@ -311,6 +324,7 @@
                 }
             }
 
+            updateLogoModelName(); // 儲存後同步更新左上角
             closeSettings();
             showTempAlert('✅ 系統設定已更新並儲存！');
         }
@@ -371,7 +385,9 @@
 
             abortController = new AbortController();
             let modelName = getSavedModelName();
-            document.querySelector('.loading-text').innerText = '⚡ AI 分析中... (' + modelName + ')';
+            let displayModelName = modelName.replace(/-/g, ' '); // 替換連字號為空格
+            
+            document.querySelector('.loading-text').innerText = '⚡ 分析中... (' + displayModelName + ')';
             loadingOverlay.style.display = 'flex';
             aiFindings = { hemorrhage: false, eye: "OD" }; 
 
@@ -427,14 +443,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (coords.disc && coords.cup) {
                     if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    showTempAlert('✨ AI 定位完成！ (' + modelName + ')');
+                    showTempAlert('✨ AI 定位完成！');
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
 
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    showTempAlert('🛑 已中斷 AI 分析，返回手動模式');
+                    showTempAlert('🛑 已中斷連線，進入手動模式');
                 } else {
                     console.error("AI 分析發生錯誤:", err);
                     showTempAlert('⚠️ AI 失敗: ' + err.message.substring(0, 100));
@@ -527,7 +543,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             setCDRatio(sliderCD.value);
         }
 
-        // 核心更新：去除分隔線，改為獨立分列排版，並整合 ISNT 判斷
         function updateDashboard() {
             let content = "";
             let hasWarning = false;
@@ -538,7 +553,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (showCup && showDisc) {
                 let warnings = [];
-                let isntWarnings = []; // 用來整合 ISNT 異常
+                let isntWarnings = []; 
                 
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
@@ -552,17 +567,17 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     rimNasal = rimRight; rimTemporal = rimLeft; 
                 }
 
-                // 1. 完整 ISNT 法則：I > S > N > T
+                // 1. ISNT 法則：整合於同一列
                 if (rimInf < rimSup * 0.9) isntWarnings.push("I < S");
                 if (rimSup < rimNasal * 0.9) isntWarnings.push("S < N");
                 if (rimNasal < rimTemporal * 0.9) isntWarnings.push("N < T");
                 
                 if (isntWarnings.length > 0) {
-                    warnings.push("⚠️ ISNT 異常: " + isntWarnings.join(", "));
+                    warnings.push("⚠️ ISNT Violation: " + isntWarnings.join(", "));
                     hasWarning = true;
                 }
 
-                // 2. 各方位嚴重變薄 (Thinning)
+                // 2. 獨立列：各方位嚴重變薄
                 let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
                 let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
                 let notchThreshV = discV * 0.06;
@@ -573,7 +588,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (rimNasal < notchThreshH) { warnings.push("⚠️ Nasal: Thinning"); hasWarning = true; }
                 if (rimTemporal < notchThreshH) { warnings.push("⚠️ Temporal: Thinning"); hasWarning = true; }
 
-                // 3. AI 發現出血
+                // 3. 獨立列：出血
                 if (aiFindings.hemorrhage) { 
                     warnings.push("⚠️ Disc Hemorrhage"); 
                     hasWarning = true; 
@@ -607,7 +622,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if(!isUpdatingCD && document.activeElement !== sliderCD) {
                 sliderCD.value = vRatio.toFixed(2);
             }
-            updateDashboard(); // 即時更新儀表板
+            updateDashboard(); 
         }
 
         function detectBrightCenter(image) {
