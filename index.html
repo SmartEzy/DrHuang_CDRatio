@@ -37,15 +37,16 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
+        /* 階段二：警示看板 UI */
+        #warningBar { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(40,10,10,0.85); padding: 8px 16px; border-radius: 15px; border: 1px solid #ff3b30; color: #ff8a80; font-size: 0.95rem; font-weight: bold; z-index: 10; pointer-events: none; box-shadow: 0 4px 12px rgba(255,59,48,0.2); white-space: nowrap; text-align: center; line-height: 1.6; backdrop-filter: blur(5px); }
+
         #statusToast { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; color: #4cd964; padding: 10px 20px; border-radius: 20px; font-size: 0.9rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; text-align: center; }
 
         #loadingOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.65); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
         }
-        .spinner {
-            width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
-        }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { color: #fff; font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; }
 
@@ -93,23 +94,18 @@
         input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
         input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
 
-        canvas { 
-            display: none; width: 100vw; height: 100vh; cursor: crosshair; 
-            -webkit-touch-callout: none; 
-            -webkit-user-select: none; 
-            user-select: none; 
-        }
+        canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
         /* 手機版響應式設計修正 */
         @media (max-width: 600px) {
-            #logo { top: 15px; left: 15px; }
+            #logo { top: 12px; left: 15px; }
             #logo img { height: 28px !important; }
             #logoText { font-size: 1.1rem; margin-left: 8px; }
             #topBar { top: 15px; right: 15px; }
-            /* 修正重疊問題：將數值列移到中央偏下 */
-            #infoBar { top: 60px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
-            /* 提示訊息也要跟著往下移避免擋住 */
-            #statusToast { top: 105px; }
+            /* 縮減按鈕文字後，V/H 面板完美回到頂部置中 */
+            #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
+            #warningBar { top: 65px; font-size: 0.85rem; padding: 6px 12px; }
+            #statusToast { top: 65px; }
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
@@ -131,7 +127,8 @@
     </div>
 
     <div id="topBar">
-        <button class="setting-btn" onclick="openSystemSettings()">⚙️ 系統設定</button>
+        <!-- 手機版按鈕文字已簡化為「設定」 -->
+        <button class="setting-btn" onclick="openSystemSettings()">⚙️ 設定</button>
     </div>
 
     <div id="dropZone" onclick="document.getElementById('fileInput').click()">
@@ -143,6 +140,9 @@
         <span class="label">V:</span><span id="vRatio" class="val">0.00</span>
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
+    
+    <!-- 階段二：臨床警示看板 -->
+    <div id="warningBar"></div>
 
     <div id="statusToast"></div>
     
@@ -209,6 +209,7 @@
         const fileInput = document.getElementById('fileInput');
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
+        const warningBar = document.getElementById('warningBar');
         const statusToast = document.getElementById('statusToast');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const instruction = document.getElementById('instruction');
@@ -244,6 +245,9 @@
 
         let showCup = false;  
         let showDisc = true;  
+        
+        // 儲存 AI 回傳的特徵判定
+        let aiFindings = { notching: false, hemorrhage: false };
 
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
@@ -309,6 +313,8 @@
                     updateSegUI();
 
                     resetView();
+                    aiFindings = { notching: false, hemorrhage: false }; // 重置臨床發現
+                    updateWarnings();
 
                     if (getSavedApiKey()) {
                         runAILocalization();
@@ -334,21 +340,26 @@
 
             loadingOverlay.style.display = 'flex';
             let modelName = getSavedModelName();
+            aiFindings = { notching: false, hemorrhage: false }; // 呼叫前先重置
 
             try {
                 const base64Data = rawBase64.split(',')[1];
                 const mimeType = rawBase64.split(',')[0].split(':')[1].split(';')[0];
 
+                // 階段二：升級版 Prompt (加入血管轉折、出血與 Notching 偵測)
                 const promptText = `
-You are an expert ophthalmologist AI. Analyze this fundus/OCT photograph.
+You are an expert ophthalmologist AI. Analyze this fundus photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
-- The Optic Disc (OD) is the well-defined yellowish/pale oval structure where vessels converge.
-- The Optic Cup (OC) is the brighter, central depression within the Optic Disc.
-Provide tight and accurate bounding boxes.
-Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to image width and height) using this exact schema:
+- The Optic Disc (OD) is the outer boundary.
+- The Optic Cup (OC) is the inner depression. Pay special attention to "vessel kinking" or bayoneting at the cup margin to determine its precise boundary.
+Also, evaluate for signs of glaucoma:
+- "notching": true if there is localized rim thinning (especially inferiorly or superiorly).
+- "hemorrhage": true if there is a Drance hemorrhage (disc margin hemorrhage).
+Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean findings using this exact schema:
 {
   "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
-  "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0}
+  "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
+  "findings": {"notching": false, "hemorrhage": false}
 }`;
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -382,8 +393,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                 const coords = JSON.parse(rawText);
 
                 if (coords.disc && coords.cup) {
+                    if (coords.findings) {
+                        aiFindings = coords.findings;
+                    }
                     applyAICoordinates(coords);
-                    showToast('✨ AI 定位完成！可進行手動微調');
+                    showToast('✨ AI 定位與特徵分析完成！可手動微調');
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
@@ -399,7 +413,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
         function applyAICoordinates(coords) {
             let discImgCx = ((coords.disc.xmin + coords.disc.xmax) / 2) * img.width;
             let discImgCy = ((coords.disc.ymin + coords.disc.ymax) / 2) * img.height;
-            
             let discImgRx = (Math.abs(coords.disc.xmax - coords.disc.xmin) / 2) * img.width;
             let discImgRy = (Math.abs(coords.disc.ymax - coords.disc.ymin) / 2) * img.height;
 
@@ -414,10 +427,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             transform.y = canvas.height / 2 - discImgCy * transform.scale;
 
             function toScreen(ix, iy) {
-                return {
-                    x: transform.x + ix * transform.scale,
-                    y: transform.y + iy * transform.scale
-                };
+                return { x: transform.x + ix * transform.scale, y: transform.y + iy * transform.scale };
             }
 
             let d_top = toScreen(discImgCx, discImgCy - discImgRy);
@@ -444,54 +454,30 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             showCup = true;
             showDisc = true;
             updateSegUI();
-
             draw();
         }
 
         function toggleSeg(type) {
-            if (type === 'Cup') {
-                showCup = !showCup;
-            } else if (type === 'Disc') {
-                showDisc = !showDisc;
-            } else if (type === 'All') {
-                if (showCup && showDisc) {
-                    showCup = false;
-                    showDisc = false;
-                } else {
-                    showCup = true;
-                    showDisc = true;
-                }
+            if (type === 'Cup') showCup = !showCup;
+            else if (type === 'Disc') showDisc = !showDisc;
+            else if (type === 'All') {
+                if (showCup && showDisc) { showCup = false; showDisc = false; } 
+                else { showCup = true; showDisc = true; }
             }
             updateSegUI();
             draw();
         }
 
         function updateSegUI() {
-            const btnCup = document.getElementById('btnCup');
-            const btnDisc = document.getElementById('btnDisc');
-            
-            if (showCup) {
-                btnCup.classList.add('active-cup');
-            } else {
-                btnCup.classList.remove('active-cup');
-            }
-
-            if (showDisc) {
-                btnDisc.classList.add('active-disc');
-            } else {
-                btnDisc.classList.remove('active-disc');
-            }
+            document.getElementById('btnCup').classList.toggle('active-cup', showCup);
+            document.getElementById('btnDisc').classList.toggle('active-disc', showDisc);
         }
 
         function setCDRatio(ratioVal) {
             isUpdatingCD = true; 
             let targetV = parseFloat(ratioVal);
             
-            if (!showCup || !showDisc) {
-                showCup = true;
-                showDisc = true;
-                updateSegUI();
-            }
+            if (!showCup || !showDisc) { showCup = true; showDisc = true; updateSegUI(); }
 
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
@@ -500,16 +486,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             let targetCupH = discH * targetV;
 
             let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
-            pts.c_v1.y = dv_cy - (targetCupV / 2);
-            pts.c_v1.x = pts.d_v1.x; 
-            pts.c_v2.y = dv_cy + (targetCupV / 2);
-            pts.c_v2.x = pts.d_v2.x; 
+            pts.c_v1.y = dv_cy - (targetCupV / 2); pts.c_v1.x = pts.d_v1.x; 
+            pts.c_v2.y = dv_cy + (targetCupV / 2); pts.c_v2.x = pts.d_v2.x; 
 
             let dh_cx = (pts.d_h1.x + pts.d_h2.x) / 2;
-            pts.c_h1.x = dh_cx - (targetCupH / 2);
-            pts.c_h1.y = pts.d_h1.y; 
-            pts.c_h2.x = dh_cx + (targetCupH / 2);
-            pts.c_h2.y = pts.d_h2.y;
+            pts.c_h1.x = dh_cx - (targetCupH / 2); pts.c_h1.y = pts.d_h1.y; 
+            pts.c_h2.x = dh_cx + (targetCupH / 2); pts.c_h2.y = pts.d_h2.y;
 
             draw();
             isUpdatingCD = false; 
@@ -517,17 +499,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
 
         function stepCD(direction) {
             let current = parseFloat(sliderCD.value);
-            let newVal;
-            
-            if (direction > 0) {
-                newVal = Math.floor(current * 10 + 1.001) / 10;
-            } else {
-                newVal = Math.ceil(current * 10 - 1.001) / 10;
-            }
-
+            let newVal = direction > 0 ? Math.floor(current * 10 + 1.001) / 10 : Math.ceil(current * 10 - 1.001) / 10;
             if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
             if (newVal > parseFloat(sliderCD.max)) newVal = parseFloat(sliderCD.max);
-            
             sliderCD.value = newVal.toFixed(2);
             setCDRatio(sliderCD.value);
         }
@@ -536,29 +510,23 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             try {
                 const tempCanvas = document.createElement('canvas');
                 const tCtx = tempCanvas.getContext('2d');
-                
                 const scale = 64 / image.width;
-                tempCanvas.width = 64; 
-                tempCanvas.height = Math.floor(image.height * scale);
+                tempCanvas.width = 64; tempCanvas.height = Math.floor(image.height * scale);
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
                 for (let i = 0; i < imgData.length; i += 4) {
                     if (imgData[i] > 15) { 
-                        let px = (i / 4) % tempCanvas.width;
-                        let py = Math.floor((i / 4) / tempCanvas.width);
+                        let px = (i / 4) % tempCanvas.width; let py = Math.floor((i / 4) / tempCanvas.width);
                         if (px < minX) minX = px; if (px > maxX) maxX = px;
                         if (py < minY) minY = py; if (py > maxY) maxY = py;
                     }
                 }
                 
-                let eyeCx = (minX + maxX) / 2;
-                let eyeCy = (minY + maxY) / 2;
-                let eyeRx = (maxX - minX) / 2;
-                let eyeRy = (maxY - minY) / 2;
+                let eyeCx = (minX + maxX) / 2, eyeCy = (minY + maxY) / 2;
+                let eyeRx = (maxX - minX) / 2, eyeRy = (maxY - minY) / 2;
                 let eyeR = Math.min(eyeRx, eyeRy);
-                
                 if (eyeR <= 0) return null;
 
                 let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
@@ -569,41 +537,27 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                     }
                 }
 
-                let maxScore = -1; 
-                let bestX = eyeCx; 
-                let bestY = eyeCy;
-                
+                let maxScore = -1, bestX = eyeCx, bestY = eyeCy;
                 let winR = Math.max(2, Math.floor(eyeR * 0.15));
 
                 for (let y = minY + winR; y <= maxY - winR; y++) {
                     for (let x = minX + winR; x <= maxX - winR; x++) {
-                        let dx = x - eyeCx;
-                        let dy = y - eyeCy;
+                        let dx = x - eyeCx, dy = y - eyeCy;
                         let dist = Math.sqrt(dx*dx + dy*dy);
-                        
                         if (dist > eyeR * 0.88) continue; 
                         
                         let sum = 0, count = 0;
                         for(let wy = -winR; wy <= winR; wy++) {
                             for(let wx = -winR; wx <= winR; wx++) {
-                                if(wx*wx + wy*wy <= winR*winR) {
-                                    sum += bMap[(y+wy)*tempCanvas.width + (x+wx)];
-                                    count++;
-                                }
+                                if(wx*wx + wy*wy <= winR*winR) { sum += bMap[(y+wy)*tempCanvas.width + (x+wx)]; count++; }
                             }
                         }
                         let localAvg = sum / count;
-                        
                         let ny = Math.abs(dy) / eyeR; 
                         let yWeight = Math.max(0.1, 1 - Math.pow(ny / 0.4, 2)); 
-                        
                         let score = localAvg * yWeight;
 
-                        if (score > maxScore) { 
-                            maxScore = score; 
-                            bestX = x; 
-                            bestY = y; 
-                        }
+                        if (score > maxScore) { maxScore = score; bestX = x; bestY = y; }
                     }
                 }
                 return { x: bestX / scale, y: bestY / scale };
@@ -616,7 +570,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             let discY = detected ? detected.y : img.height / 2;
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
-            
             transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discX * transform.scale;
             transform.y = canvas.height / 2 - discY * transform.scale;
@@ -624,12 +577,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            let dRy = baseScaledMin * mkrZoom * 0.055; 
-            let dRx = baseScaledMin * mkrZoom * 0.045; 
-            
+            let dRy = baseScaledMin * mkrZoom * 0.055, dRx = baseScaledMin * mkrZoom * 0.045; 
             let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
-            let cRy = dRy * currentCDRatio; 
-            let cRx = dRx * currentCDRatio; 
+            let cRy = dRy * currentCDRatio, cRx = dRx * currentCDRatio; 
             
             pts = {
                 d_v1: {x: cx, y: cy - dRy, color: dColor}, d_v2: {x: cx, y: cy + dRy, color: dColor},
@@ -638,10 +588,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                 c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
             };
             
-            sliderImg.value = imgZoom; 
-            sliderMkr.value = mkrZoom; 
-            sliderAll.value = allZoom;
-
+            sliderImg.value = imgZoom; sliderMkr.value = mkrZoom; sliderAll.value = allZoom;
             draw();
         }
 
@@ -656,6 +603,38 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             return dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
         }
 
+        // 階段二核心：動態分析 ISNT 法則與臨床警告
+        function updateWarnings() {
+            if (!showCup || !showDisc) {
+                warningBar.style.display = 'none';
+                return;
+            }
+
+            let warnings = [];
+            // 計算上、下方盤沿厚度 (螢幕座標：y越小代表在畫面上方，但眼底圖可能上下顛倒，這裡以畫面上的幾何絕對值計算)
+            let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
+            let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
+
+            // ISNT 法則：正常情況下 Inferior (下方) 應 >= Superior (上方)。
+            // 由於眼底圖相機可能倒立，我們判斷如果其中一邊顯著變薄，提出警告
+            if (rimInf < rimSup * 0.85) {
+                warnings.push("⚠️ 下方盤沿 (I) 較上方 (S) 異常變薄");
+            } else if (rimSup < rimInf * 0.85) {
+                warnings.push("⚠️ 上方盤沿 (S) 較下方 (I) 異常變薄");
+            }
+
+            // AI 的特定特徵回報
+            if (aiFindings.notching) warnings.push("⚠️ AI 偵測到 Notching (盤沿凹陷)");
+            if (aiFindings.hemorrhage) warnings.push("🩸 AI 偵測到 Disc Hemorrhage");
+
+            if (warnings.length > 0) {
+                warningBar.innerHTML = warnings.join('<br>');
+                warningBar.style.display = 'block';
+            } else {
+                warningBar.style.display = 'none';
+            }
+        }
+
         function calculateRatio() {
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
@@ -667,6 +646,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             if(!isUpdatingCD && document.activeElement !== sliderCD) {
                 sliderCD.value = vRatio.toFixed(2);
             }
+            // 每次拉動座標後，即時更新警示
+            updateWarnings();
         }
 
         function getCenter() {
@@ -736,28 +717,19 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                 for (let i = 1; i <= 9; i++) {
                     if (i === 5) continue;
                     let f = i / 10;
-                    
                     let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
                     let vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
-                    context.beginPath();
-                    context.arc(vx, vy, 2.5, 0, Math.PI*2);
-                    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                    context.fill();
-                    context.beginPath();
-                    context.arc(vx, vy, 1.5, 0, Math.PI*2);
-                    context.fillStyle = dColor;
-                    context.fill();
+                    context.beginPath(); context.arc(vx, vy, 2.5, 0, Math.PI*2);
+                    context.fillStyle = 'rgba(255, 255, 255, 0.7)'; context.fill();
+                    context.beginPath(); context.arc(vx, vy, 1.5, 0, Math.PI*2);
+                    context.fillStyle = dColor; context.fill();
 
                     let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x);
                     let hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
-                    context.beginPath();
-                    context.arc(hx, hy, 2.5, 0, Math.PI*2);
-                    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                    context.fill();
-                    context.beginPath();
-                    context.arc(hx, hy, 1.5, 0, Math.PI*2);
-                    context.fillStyle = dColor;
-                    context.fill();
+                    context.beginPath(); context.arc(hx, hy, 2.5, 0, Math.PI*2);
+                    context.fillStyle = 'rgba(255, 255, 255, 0.7)'; context.fill();
+                    context.beginPath(); context.arc(hx, hy, 1.5, 0, Math.PI*2);
+                    context.fillStyle = dColor; context.fill();
                 }
             }
             context.restore();
@@ -765,19 +737,13 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             function drawDash(p, key, color) {
                 let dashLen = 14; 
                 context.beginPath();
-                if (key.includes('_v')) {
-                    context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y);
-                } else {
-                    context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2);
-                }
+                if (key.includes('_v')) { context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y); } 
+                else { context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2); }
                 context.strokeStyle = '#fff'; context.lineWidth = 5; context.stroke();
                 
                 context.beginPath();
-                if (key.includes('_v')) {
-                    context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y);
-                } else {
-                    context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2);
-                }
+                if (key.includes('_v')) { context.moveTo(p.x - dashLen/2, p.y); context.lineTo(p.x + dashLen/2, p.y); } 
+                else { context.moveTo(p.x, p.y - dashLen/2); context.lineTo(p.x, p.y + dashLen/2); }
                 context.strokeStyle = color; context.lineWidth = 3; context.stroke();
             }
             
@@ -808,15 +774,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             calculateRatio();
 
             if (isTouchMode && (showDisc || showCup) && dragObj && dragObj.type === 'point' && lastMouse) {
-                let magR = 90;     
-                let magZoom = 1.0; 
-                
-                let magX = lastMouse.x;
-                let magY = lastMouse.y - 130; 
+                let magR = 90, magZoom = 1.0; 
+                let magX = lastMouse.x, magY = lastMouse.y - 130; 
 
                 if (magX < magR + 10) magX = magR + 10;
                 if (magX > canvas.width - magR - 10) magX = canvas.width - magR - 10;
-
                 if (magY < 140) { magY = lastMouse.y + 140; }
                 if (magY > canvas.height - magR - 10) { magY = canvas.height - magR - 10; }
 
@@ -827,13 +789,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                 
                 ctx.fillStyle = '#111'; ctx.fill();
 
-                ctx.translate(magX, magY);
-                ctx.scale(magZoom, magZoom);
-                ctx.translate(-lastMouse.x, -lastMouse.y);
+                ctx.translate(magX, magY); ctx.scale(magZoom, magZoom); ctx.translate(-lastMouse.x, -lastMouse.y);
 
                 ctx.save();
-                ctx.translate(transform.x, transform.y);
-                ctx.scale(transform.scale, transform.scale);
+                ctx.translate(transform.x, transform.y); ctx.scale(transform.scale, transform.scale);
                 if(img.src) ctx.drawImage(img, 0, 0);
                 ctx.restore();
 
@@ -878,19 +837,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                 if (d < minLineDist) { minLineDist = d; closestLine = lines[i]; }
             }
 
-            let R_CENTER = isTouch ? 40 : 15;
-            let R_POINT  = isTouch ? 45 : 20;
-            let R_LINE   = isTouch ? 35 : 15;
+            let R_CENTER = isTouch ? 40 : 15, R_POINT = isTouch ? 45 : 20, R_LINE = isTouch ? 35 : 15;
 
-            if (dCenter <= R_CENTER && dCenter <= minPtDist) {
-                return { type: 'group', lastX: tx, lastY: ty };
-            } 
-            else if (minPtDist <= R_POINT) {
-                return { type: 'point', pt: closestPt, key: closestKey };
-            } 
-            else if (minLineDist <= R_LINE) {
-                return { type: 'line', pts: closestLine, lastX: tx, lastY: ty };
-            }
+            if (dCenter <= R_CENTER && dCenter <= minPtDist) return { type: 'group', lastX: tx, lastY: ty };
+            else if (minPtDist <= R_POINT) return { type: 'point', pt: closestPt, key: closestKey };
+            else if (minLineDist <= R_LINE) return { type: 'line', pts: closestLine, lastX: tx, lastY: ty };
             return null; 
         }
 
@@ -900,14 +851,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
             let mouseX = e.clientX; let mouseY = e.clientY;
 
             if (e.shiftKey) { 
-                applyZoomImg(zoomFactor, mouseX, mouseY);
-                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+                applyZoomImg(zoomFactor, mouseX, mouseY); imgZoom *= zoomFactor; sliderImg.value = imgZoom;
             } else if (e.ctrlKey || e.metaKey) { 
-                applyZoomMkr(zoomFactor, mouseX, mouseY);
-                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+                applyZoomMkr(zoomFactor, mouseX, mouseY); mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
             } else { 
-                applyZoomImg(zoomFactor, mouseX, mouseY);
-                applyZoomMkr(zoomFactor, mouseX, mouseY);
+                applyZoomImg(zoomFactor, mouseX, mouseY); applyZoomMkr(zoomFactor, mouseX, mouseY);
                 imgZoom *= zoomFactor; sliderImg.value = imgZoom;
                 mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
                 allZoom *= zoomFactor; sliderAll.value = allZoom;
@@ -917,11 +865,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
 
         canvas.addEventListener('mousedown', e => {
             if (Date.now() - lastTouchTime < 500) return;
-            
             isTouchMode = false; 
             let mouseX = e.clientX; let mouseY = e.clientY;
             lastMouse = {x: mouseX, y: mouseY}; 
-            
             dragObj = getHitTarget(mouseX, mouseY, false);
             isDraggingCanvas = !dragObj;
             draw();
@@ -929,7 +875,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
 
         canvas.addEventListener('mousemove', e => {
             if (Date.now() - lastTouchTime < 500) return;
-            
             let mouseX = e.clientX; let mouseY = e.clientY;
             if (dragObj) {
                 if (dragObj.type === 'group') {
@@ -937,38 +882,24 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                     for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                 } else if (dragObj.type === 'point') {
-                    let dx = mouseX - dragObj.pt.x;
-                    let dy = mouseY - dragObj.pt.y;
-                    dragObj.pt.x = mouseX; 
-                    dragObj.pt.y = mouseY;
-                    
+                    let dx = mouseX - dragObj.pt.x, dy = mouseY - dragObj.pt.y;
+                    dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
                     if (e.altKey) {
                         let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
-                        if (pts[oppKey]) {
-                            pts[oppKey].x -= dx;
-                            pts[oppKey].y -= dy;
-                        }
+                        if (pts[oppKey]) { pts[oppKey].x -= dx; pts[oppKey].y -= dy; }
                     }
                 } else if (dragObj.type === 'line') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
-                    dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
-                    dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
+                    dragObj.pts[0].x += dx; dragObj.pts[0].y += dy; dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                 }
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
             } else if (isDraggingCanvas) {
                 let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
-                
-                if (e.shiftKey) { 
-                    transform.x += dx; transform.y += dy; 
-                } else if (e.ctrlKey || e.metaKey) { 
-                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
-                } else { 
-                    transform.x += dx; transform.y += dy; 
-                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
-                }
-                
+                if (e.shiftKey) { transform.x += dx; transform.y += dy; } 
+                else if (e.ctrlKey || e.metaKey) { for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } } 
+                else { transform.x += dx; transform.y += dy; for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } }
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
             }
@@ -980,15 +911,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
         });
 
         canvas.addEventListener('touchstart', e => {
-            lastTouchTime = Date.now();
-            isTouchMode = true; 
+            lastTouchTime = Date.now(); isTouchMode = true; 
             if (e.touches.length === 1) {
                 let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
                 lastMouse = { x: tx, y: ty }; 
-                
                 dragObj = getHitTarget(tx, ty, true);
-                isDraggingCanvas = !dragObj;
-                draw(); 
+                isDraggingCanvas = !dragObj; draw(); 
             } else if (e.touches.length === 2) {
                 lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             }
@@ -1005,60 +933,36 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0 relative to ima
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                     } else if (dragObj.type === 'point') {
-                        let dx = mouseX - dragObj.pt.x;
-                        let dy = mouseY - dragObj.pt.y;
-                        dragObj.pt.x = mouseX; 
-                        dragObj.pt.y = mouseY;
-                        
+                        let dx = mouseX - dragObj.pt.x, dy = mouseY - dragObj.pt.y;
+                        dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
                         if (e.altKey) {
                             let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
-                            if (pts[oppKey]) {
-                                pts[oppKey].x -= dx;
-                                pts[oppKey].y -= dy;
-                            }
+                            if (pts[oppKey]) { pts[oppKey].x -= dx; pts[oppKey].y -= dy; }
                         }
                     } else if (dragObj.type === 'line') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
-                        dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
-                        dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
+                        dragObj.pts[0].x += dx; dragObj.pts[0].y += dy; dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                     }
-                    lastMouse = { x: mouseX, y: mouseY };
-                    draw();
+                    lastMouse = { x: mouseX, y: mouseY }; draw();
                 } else if (isDraggingCanvas) {
                     let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
-                    
-                    if (e.shiftKey) { 
-                        transform.x += dx; transform.y += dy; 
-                    } else if (e.ctrlKey || e.metaKey) {
-                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
-                    } else {
-                        transform.x += dx; transform.y += dy; 
-                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
-                    }
-                    
-                    lastMouse = { x: mouseX, y: mouseY };
-                    draw();
+                    if (e.shiftKey) { transform.x += dx; transform.y += dy; } 
+                    else if (e.ctrlKey || e.metaKey) { for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } } 
+                    else { transform.x += dx; transform.y += dy; for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } }
+                    lastMouse = { x: mouseX, y: mouseY }; draw();
                 }
             } else if (e.touches.length === 2) {
                 let dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 let zoomFactor = dist / lastTouchDist;
                 let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2; let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                
-                applyZoomImg(zoomFactor, centerX, centerY);
-                applyZoomMkr(zoomFactor, centerX, centerY);
-                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
-                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
-                allZoom *= zoomFactor; sliderAll.value = allZoom;
-
+                applyZoomImg(zoomFactor, centerX, centerY); applyZoomMkr(zoomFactor, centerX, centerY);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom; mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom; allZoom *= zoomFactor; sliderAll.value = allZoom;
                 lastTouchDist = dist; draw();
             }
         }, {passive: false});
 
-        canvas.addEventListener('touchend', () => { 
-            lastTouchTime = Date.now();
-            dragObj = null; isDraggingCanvas = false; draw(); 
-        });
+        canvas.addEventListener('touchend', () => { lastTouchTime = Date.now(); dragObj = null; isDraggingCanvas = false; draw(); });
         window.addEventListener('resize', draw);
     </script>
 </body>
