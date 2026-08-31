@@ -37,16 +37,38 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        /* 單一動態看板 UI */
         #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 85%; word-wrap: break-word; text-align: center; backdrop-filter: blur(5px); transition: border-color 0.3s; pointer-events: none; }
 
+        /* 載入遮罩與取消按鈕 */
         #loadingOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.65); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.75); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
         }
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-text { color: #fff; font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; }
+        .loading-text { color: #fff; font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 30px; }
+        .cancel-ai-btn { background: #333; color: #ff8a80; border: 1px solid #ff3b30; padding: 10px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s; }
+        .cancel-ai-btn:active { transform: scale(0.95); background: #ff3b30; color: #fff; }
+
+        /* 自訂設定視窗 */
+        #settingsModalOverlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .settings-modal {
+            background: #222; padding: 25px; border-radius: 18px; width: 85%; max-width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid #444; display: flex; flex-direction: column;
+        }
+        .settings-modal h3 { margin: 0 0 20px 0; font-size: 1.3rem; color: #fff; text-align: center; }
+        .settings-modal label { font-size: 0.9rem; color: #bbb; margin-bottom: 6px; font-weight: bold; }
+        .settings-modal input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #111; color: #fff; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; }
+        .settings-modal input:focus { outline: none; border-color: #4a90e2; }
+        .settings-btn-group { display: flex; gap: 12px; margin-top: 10px; }
+        .settings-btn-group button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; transition: 0.1s; }
+        .btn-save { background: #4cd964; color: #111; }
+        .btn-save:active { transform: scale(0.95); background: #3cb850; }
+        .btn-cancel { background: #444; color: #fff; }
+        .btn-cancel:active { transform: scale(0.95); background: #333; }
 
         #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
         #instruction table { border-collapse: collapse; }
@@ -111,9 +133,29 @@
 </head>
 <body>
 
+    <!-- 系統設定專屬浮動視窗 -->
+    <div id="settingsModalOverlay">
+        <div class="settings-modal">
+            <h3>系統設定</h3>
+            <label for="modelInput">AI 模型名稱</label>
+            <input type="text" id="modelInput" list="modelList" placeholder="例如: gemini-3.5-flash">
+            <datalist id="modelList"></datalist>
+            
+            <label for="apiKeyInput">Google API Key</label>
+            <input type="password" id="apiKeyInput" placeholder="請貼上您的 API 金鑰">
+            
+            <div class="settings-btn-group">
+                <button class="btn-cancel" onclick="closeSettings()">取消</button>
+                <button class="btn-save" onclick="saveSettings()">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 支援中斷的載入遮罩 -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
-        <div class="loading-text">⚡ AI 極速分析中...</div>
+        <div class="loading-text">⚡ AI 分析中...</div>
+        <button class="cancel-ai-btn" onclick="cancelAI()">取消 (手動標記)</button>
     </div>
 
     <div id="logo">
@@ -212,6 +254,7 @@
 
         const ctx = canvas.getContext('2d');
         let img = new Image();
+        let rawBase64 = null;
         
         const cColor = '#4cd964'; 
         const dColor = '#ff3b30'; 
@@ -224,27 +267,56 @@
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
-        // 拔除 AI 對 Notch 的判定權，只保留出血點
-        let aiFindings = { hemorrhage: false };
+        // 賦予 AI 判斷左右眼能力，藉此區分 Nasal / Temporal
+        let aiFindings = { hemorrhage: false, eye: "OD" };
+        let abortController = null; // 用來中斷 AI 請求
 
         let systemMessage = "";
         let systemMessageTimeout = null;
 
+        // --- 設定面板相關邏輯 ---
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
         function openSystemSettings() {
-            let currentModel = getSavedModelName();
-            let newModel = prompt('[步驟 1/2]\n請確認要使用的 AI 模型名稱：\n(建議直接使用預設，速度最快)', currentModel);
-            if (newModel !== null) {
-                if (newModel.trim() !== '') localStorage.setItem('cdratio_gemini_model', newModel.trim());
-                let currentKey = getSavedApiKey();
-                let newKey = prompt('[步驟 2/2]\n請貼上您的 Google Gemini API Key：\n(若無更改請直接按確定保留原狀)', currentKey);
-                if (newKey !== null) {
-                    if (newKey.trim() !== '') localStorage.setItem('cdratio_gemini_api_key', newKey.trim());
-                    showTempAlert('✅ 系統設定已更新並儲存！');
+            document.getElementById('apiKeyInput').value = getSavedApiKey();
+            document.getElementById('modelInput').value = getSavedModelName();
+
+            // 讀取歷史模型記憶
+            let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
+            let dataList = document.getElementById('modelList');
+            dataList.innerHTML = '';
+            history.forEach(model => {
+                let option = document.createElement('option');
+                option.value = model;
+                dataList.appendChild(option);
+            });
+
+            document.getElementById('settingsModalOverlay').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModalOverlay').style.display = 'none';
+        }
+
+        function saveSettings() {
+            let key = document.getElementById('apiKeyInput').value.trim();
+            let model = document.getElementById('modelInput').value.trim();
+
+            if(key) localStorage.setItem('cdratio_gemini_api_key', key);
+            if(model) {
+                localStorage.setItem('cdratio_gemini_model', model);
+                // 儲存至歷史紀錄 (最多記5筆)
+                let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
+                if (!history.includes(model)) {
+                    history.unshift(model);
+                    if (history.length > 5) history.pop();
+                    localStorage.setItem('cdratio_model_history', JSON.stringify(history));
                 }
             }
+
+            closeSettings();
+            showTempAlert('✅ 系統設定已更新並儲存！');
         }
 
         function showTempAlert(msg, duration = 4000) {
@@ -268,6 +340,7 @@
             if (!file.type.match('image.*')) return;
             const reader = new FileReader();
             reader.onload = (event) => {
+                rawBase64 = event.target.result;
                 img.onload = () => {
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
@@ -279,7 +352,7 @@
                     
                     showCup = false; showDisc = true; updateSegUI();
                     resetView();
-                    aiFindings = { hemorrhage: false };
+                    aiFindings = { hemorrhage: false, eye: "OD" };
                     updateDashboard();
 
                     if (getSavedApiKey()) runAILocalization();
@@ -289,14 +362,22 @@
             reader.readAsDataURL(file);
         }
 
+        // --- 取消 AI 分析 ---
+        function cancelAI() {
+            if (abortController) {
+                abortController.abort();
+            }
+        }
+
         async function runAILocalization() {
             let apiKey = getSavedApiKey();
-            if (!apiKey) { openSystemSettings(); apiKey = getSavedApiKey(); if (!apiKey) return; }
-            if (!img.src) { showTempAlert('⚠️ 請先載入眼底影像'); return; }
+            if (!apiKey) { openSystemSettings(); return; }
+            if (!rawBase64) { showTempAlert('⚠️ 請先載入眼底影像'); return; }
 
+            abortController = new AbortController();
             loadingOverlay.style.display = 'flex';
             let modelName = getSavedModelName();
-            aiFindings = { hemorrhage: false }; 
+            aiFindings = { hemorrhage: false, eye: "OD" }; 
 
             try {
                 const MAX_API_SIZE = 1024;
@@ -310,7 +391,7 @@
                 const apiBase64 = apiCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
                 const mimeType = 'image/jpeg';
 
-                // 修正 Prompt：只負責畫框與找 Disc Hemorrhage，不猜 Notch
+                // Prompt 要求 AI 判斷左/右眼 (OD/OS) 以區分鼻側顳側
                 const promptText = `
 You are an expert ophthalmologist AI. Analyze this fundus photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
@@ -318,11 +399,12 @@ Locate the Optic Disc (OD) and Optic Cup (OC).
 - The Optic Cup (OC) is the inner depression. Pay special attention to "vessel kinking" or bayoneting at the cup margin to determine its precise boundary.
 Also, evaluate for signs of glaucoma:
 - "hemorrhage": true if there is a Drance hemorrhage (disc margin hemorrhage).
+- "eye": Identify if the image is the right eye ("OD") or left eye ("OS"). (Usually, if the macula is on the left, it's OD. If macula is on the right, it's OS).
 Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings using this exact schema:
 {
   "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
-  "findings": {"hemorrhage": false}
+  "findings": {"hemorrhage": false, "eye": "OD"}
 }`;
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -332,7 +414,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     body: JSON.stringify({
                         contents: [{ parts: [ { text: promptText }, { inline_data: { mime_type: mimeType, data: apiBase64 } } ] }],
                         generationConfig: { response_mime_type: "application/json" }
-                    })
+                    }),
+                    signal: abortController.signal
                 });
 
                 if (!response.ok) {
@@ -349,14 +432,18 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (coords.disc && coords.cup) {
                     if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    showTempAlert('✨ AI 極速定位完成！可手動微調');
+                    showTempAlert('✨ AI 定位完成！可手動微調');
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
 
             } catch (err) {
-                console.error("AI 分析發生錯誤:", err);
-                showTempAlert('⚠️ AI 失敗: ' + err.message.substring(0, 100));
+                if (err.name === 'AbortError') {
+                    showTempAlert('🛑 已取消 AI 分析，切換至手動模式');
+                } else {
+                    console.error("AI 分析發生錯誤:", err);
+                    showTempAlert('⚠️ AI 失敗: ' + err.message.substring(0, 100));
+                }
             } finally {
                 loadingOverlay.style.display = 'none';
             }
@@ -445,7 +532,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             setCDRatio(sliderCD.value);
         }
 
-        // 核心更新：拔除 AI 幻覺，全部改用您微調的絕對幾何來判斷
+        // 核心更新：加入左右眼 Nasal/Temporal 判斷與完整 ISNT 幾何法則
         function updateDashboard() {
             let content = "";
             let hasWarning = false;
@@ -457,43 +544,41 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (showCup && showDisc) {
                 let warnings = [];
                 
-                // 取得上下左右盤沿的真實螢幕距離
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
                 let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
                 let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
                 
-                let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
-                let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
-
-                // 1. 判斷基本 ISNT 法則 (僅當 I 小於 S 時警告)
-                if (rimInf < rimSup * 0.9) {
-                    warnings.push("⚠️ ISNT: I < S"); 
-                    hasWarning = true;
+                // 根據 OD/OS 賦予 N 與 T 真正的含義
+                let rimNasal, rimTemporal;
+                if (aiFindings.eye === "OS") { 
+                    rimNasal = rimLeft; rimTemporal = rimRight; // 左眼：黃斑部在右，鼻側在左
+                } else { 
+                    rimNasal = rimRight; rimTemporal = rimLeft; // 右眼 (或預設)：黃斑部在左，鼻側在右
                 }
 
-                // 2. 判斷各方位 Notching (當盤沿厚度低於該軸直徑的 6% 時觸發)
+                // 完整 ISNT 法則：I > S > N > T
+                if (rimInf < rimSup * 0.9) { warnings.push("⚠️ ISNT: I < S"); hasWarning = true; }
+                if (rimSup < rimNasal * 0.9) { warnings.push("⚠️ ISNT: S < N"); hasWarning = true; }
+                if (rimNasal < rimTemporal * 0.9) { warnings.push("⚠️ ISNT: N < T"); hasWarning = true; }
+
+                // 各方位嚴重變薄 (Notching) - 低於盤徑 6%
+                let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
+                let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
                 let notchThreshV = discV * 0.06;
                 let notchThreshH = discH * 0.06;
 
-                if (rimSup < notchThreshV) { warnings.push("⚠️ Superior: Notch"); hasWarning = true; }
-                if (rimInf < notchThreshV) { warnings.push("⚠️ Inferior: Notch"); hasWarning = true; }
-                
-                // 水平方向 (N/T) 若極度變薄，也會精準抓出！
-                if (rimLeft < notchThreshH || rimRight < notchThreshH) { 
-                    warnings.push("⚠️ N/T: 極度變薄"); 
-                    hasWarning = true; 
-                }
+                if (rimSup < notchThreshV) { warnings.push("⚠️ Superior: Thinning"); hasWarning = true; }
+                if (rimInf < notchThreshV) { warnings.push("⚠️ Inferior: Thinning"); hasWarning = true; }
+                if (rimNasal < notchThreshH) { warnings.push("⚠️ Nasal: Thinning"); hasWarning = true; }
+                if (rimTemporal < notchThreshH) { warnings.push("⚠️ Temporal: Thinning"); hasWarning = true; }
 
-                // 3. 保留 AI 的出血點偵測
-                if (aiFindings.hemorrhage) { 
-                    warnings.push("🩸 Disc Hemorrhage"); 
-                    hasWarning = true; 
-                }
+                // AI 發現
+                if (aiFindings.hemorrhage) { warnings.push("⚠️ Disc Hemorrhage"); hasWarning = true; }
 
                 if (warnings.length > 0) {
                     let mt = systemMessage ? 'margin-top: 6px;' : '';
-                    content += `<div style="color: #ff8a80; font-weight: bold; ${mt}">${warnings.join(' &nbsp;|&nbsp; ')}</div>`;
+                    content += `<div style="color: #ff8a80; font-weight: bold; line-height: 1.5; ${mt}">${warnings.join(' &nbsp;|&nbsp; ')}</div>`;
                 }
             }
 
