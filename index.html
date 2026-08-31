@@ -78,10 +78,11 @@
         #instruction td:first-child { text-align: right; white-space: nowrap; }
         #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
         #instruction td:last-child { text-align: left; white-space: nowrap; }
-        .txt-justify { display: flex; justify-content: space-between; width: 2.5em; }
 
-        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
-        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
+        /* 修正 5: 將 rightControls 設為 pointer-events: none，避免空白區域擋住拖曳 */
+        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; pointer-events: none; }
+        /* 再將 panel-box 恢復點擊功能 */
+        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
         
         #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
@@ -142,7 +143,7 @@
         <div class="settings-modal">
             <h3>系統設定</h3>
             <label for="modelInput">AI 模型名稱</label>
-            <input type="text" id="modelInput" list="modelList" placeholder="例如: gemini-3.5-flash">
+            <input type="text" id="modelInput" list="modelList" placeholder="例如: gemini-1.5-flash">
             <datalist id="modelList"></datalist>
             
             <label for="apiKeyInput">Google API Key</label>
@@ -163,7 +164,7 @@
     </div>
 
     <div id="logo">
-        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
+        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);" onerror="this.style.display='none'">
         <div class="logo-text-group">
             <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
             <span id="logoSubText"></span>
@@ -186,12 +187,13 @@
     
     <div id="statusDashboard"></div>
     
+    <!-- 修正 4: 左下角說明文字精簡 -->
     <div id="instruction">
         <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>&amp;</span><span>尺</span></div></td></tr>
-            <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
-            <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
-            <tr><td><b>+Opt/Alt</b></td><td>:</td><td><div class="txt-justify"><span>對</span><span>稱</span></div></td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>同步</td></tr>
+            <tr><td><b>+Shift</b></td><td>:</td><td>圖片</td></tr>
+            <tr><td><b>+Ctrl</b></td><td>:</td><td>尺標</td></tr>
+            <tr><td><b>+Opt/Alt</b></td><td>:</td><td>對稱</td></tr>
         </table>
     </div>
 
@@ -269,7 +271,9 @@
         let pts = {};
         let transform = { scale: 1, x: 0, y: 0 };
         
-        let imgZoom = 3.5, mkrZoom = 3.5, allZoom = 3.5;
+        // 將預設 zoom 改回 1.0，避免一開始載入局部圖過度放大
+        let imgZoom = 1.0, mkrZoom = 1.0, allZoom = 1.0;
+        
         let dragObj = null; let isDraggingCanvas = false; let lastMouse = {x: 0, y: 0}; let lastTouchDist = 0;
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
@@ -281,7 +285,7 @@
         let systemMessageTimeout = null;
 
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
-        function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
+        function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-1.5-flash'; }
 
         // 即時更新左上角模型名稱
         function updateLogoModelName() {
@@ -293,7 +297,14 @@
             document.getElementById('apiKeyInput').value = getSavedApiKey();
             document.getElementById('modelInput').value = getSavedModelName();
 
-            let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
+            let history;
+            try {
+                history = JSON.parse(localStorage.getItem('cdratio_model_history'));
+                if (!Array.isArray(history)) throw new Error("Invalid format");
+            } catch(e) {
+                history = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
+            }
+
             let dataList = document.getElementById('modelList');
             dataList.innerHTML = '';
             history.forEach(model => {
@@ -309,6 +320,7 @@
             document.getElementById('settingsModalOverlay').style.display = 'none';
         }
 
+        // 修正 3: 確保儲存時，會將新的或已存在的模型名稱推至陣列頂端
         function saveSettings() {
             let key = document.getElementById('apiKeyInput').value.trim();
             let model = document.getElementById('modelInput').value.trim();
@@ -316,12 +328,21 @@
             if(key) localStorage.setItem('cdratio_gemini_api_key', key);
             if(model) {
                 localStorage.setItem('cdratio_gemini_model', model);
-                let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
-                if (!history.includes(model)) {
-                    history.unshift(model);
-                    if (history.length > 5) history.pop();
-                    localStorage.setItem('cdratio_model_history', JSON.stringify(history));
+                
+                let history;
+                try {
+                    history = JSON.parse(localStorage.getItem('cdratio_model_history'));
+                    if (!Array.isArray(history)) throw new Error("Invalid format");
+                } catch(e) {
+                    history = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
                 }
+                
+                // 移除舊的相同名稱，並推至最前面
+                history = history.filter(m => m !== model);
+                history.unshift(model);
+                if (history.length > 8) history.length = 8;
+                
+                localStorage.setItem('cdratio_model_history', JSON.stringify(history));
             }
 
             updateLogoModelName(); 
@@ -365,7 +386,8 @@
                     aiFindings = { hemorrhage: false };
                     updateDashboard();
 
-                    if (getSavedApiKey()) runAILocalization();
+                    // 修正 2: 移除了 if (getSavedApiKey()) runAILocalization(); 
+                    // 讓系統先維持手動模式，避免每次換圖都要等待 AI。
                 }
                 img.src = event.target.result;
             }
@@ -471,6 +493,19 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let cupImgRy = (Math.abs(coords.cup.ymax - coords.cup.ymin) / 2) * img.height;
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+            
+            // 修正 1：智慧縮放 (根據 AI 找到的視神經盤尺寸自動決定合適放大倍率)
+            let discScreenSize = Math.max(discImgRx, discImgRy) * 2 * baseScale;
+            let desiredSize = Math.min(canvas.width, canvas.height) * 0.45; // 期望讓視神經盤佔據螢幕短邊約 45%
+            let targetZoom = desiredSize / discScreenSize;
+            
+            if (targetZoom < 1.0) targetZoom = 1.0;
+            if (targetZoom > 8.0) targetZoom = 8.0;
+
+            imgZoom = targetZoom;
+            mkrZoom = targetZoom;
+            allZoom = targetZoom;
+
             transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discImgCx * transform.scale;
             transform.y = canvas.height / 2 - discImgCy * transform.scale;
@@ -493,6 +528,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 d_h1: { x: d_left.x, y: d_left.y, color: dColor }, d_h2: { x: d_right.x, y: d_right.y, color: dColor },
                 c_h1: { x: c_left.x, y: c_left.y, color: cColor }, c_h2: { x: c_right.x, y: c_right.y, color: cColor }
             };
+
+            sliderImg.value = imgZoom.toFixed(2);
+            sliderMkr.value = mkrZoom.toFixed(2);
+            sliderAll.value = allZoom.toFixed(2);
 
             showCup = true; showDisc = true; updateSegUI(); draw();
         }
@@ -558,13 +597,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
                 let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
                 
-                // 1. 完整 ISNT 法則：僅保留 I < S 的警告
                 if (rimInf < rimSup * 0.95) { 
                     warnings.push("⚠️ ISNT Violation: I < S");
                     hasWarning = true;
                 }
 
-                // 2. 獨立列：各方位嚴重變薄 (Thinning)
                 let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
                 let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
                 let notchThreshV = discV * 0.06;
@@ -575,7 +612,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (rimLeft < notchThreshH) { warnings.push("⚠️ Temporal: Thinning"); hasWarning = true; } 
                 if (rimRight < notchThreshH) { warnings.push("⚠️ Nasal: Thinning"); hasWarning = true; }
 
-                // 3. 獨立列：出血
                 if (aiFindings.hemorrhage) { 
                     warnings.push("⚠️ Disc Hemorrhage"); 
                     hasWarning = true; 
@@ -675,6 +711,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let discY = detected ? detected.y : img.height / 2;
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+            
+            // 修正 1：預設不強制放大，讓使用者能清楚確認圖片是否為局部
+            imgZoom = 1.0; 
+            mkrZoom = 1.0; 
+            allZoom = 1.0;
+            
             transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discX * transform.scale;
             transform.y = canvas.height / 2 - discY * transform.scale;
@@ -682,7 +724,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            let dRy = baseScaledMin * mkrZoom * 0.055, dRx = baseScaledMin * mkrZoom * 0.045; 
+            // 放大初始手動尺標範圍，以符合 imgZoom = 1.0 時的視覺比例
+            let dRy = baseScaledMin * 0.2, dRx = baseScaledMin * 0.2; 
             let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
             let cRy = dRy * currentCDRatio, cRx = dRx * currentCDRatio; 
             
@@ -693,7 +736,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 c_h1: {x: cx - cRx, y: cy, color: cColor},  c_h2: {x: cx + cRx, y: cy, color: cColor}
             };
             
-            sliderImg.value = imgZoom; sliderMkr.value = mkrZoom; sliderAll.value = allZoom;
+            sliderImg.value = imgZoom.toFixed(2); 
+            sliderMkr.value = mkrZoom.toFixed(2); 
+            sliderAll.value = allZoom.toFixed(2);
             draw();
         }
 
@@ -752,7 +797,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let val = parseFloat(e.target.value); let factor = val / allZoom;
             let cx = canvas.width/2; let cy = canvas.height/2;
             applyZoomImg(factor, cx, cy); applyZoomMkr(factor, cx, cy);
-            imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
+            imgZoom *= factor; sliderImg.value = imgZoom.toFixed(2); 
+            mkrZoom *= factor; sliderMkr.value = mkrZoom.toFixed(2); 
+            allZoom = val; draw();
         });
 
         function drawMarkersOverlay(context) {
@@ -895,14 +942,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let mouseX = e.clientX; let mouseY = e.clientY;
 
             if (e.shiftKey) { 
-                applyZoomImg(zoomFactor, mouseX, mouseY); imgZoom *= zoomFactor; sliderImg.value = imgZoom;
+                applyZoomImg(zoomFactor, mouseX, mouseY); imgZoom *= zoomFactor; sliderImg.value = imgZoom.toFixed(2);
             } else if (e.ctrlKey || e.metaKey) { 
-                applyZoomMkr(zoomFactor, mouseX, mouseY); mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
+                applyZoomMkr(zoomFactor, mouseX, mouseY); mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom.toFixed(2);
             } else { 
                 applyZoomImg(zoomFactor, mouseX, mouseY); applyZoomMkr(zoomFactor, mouseX, mouseY);
-                imgZoom *= zoomFactor; sliderImg.value = imgZoom;
-                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom;
-                allZoom *= zoomFactor; sliderAll.value = allZoom;
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom.toFixed(2);
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom.toFixed(2);
+                allZoom *= zoomFactor; sliderAll.value = allZoom.toFixed(2);
             }
             draw();
         }, {passive: false});
@@ -1001,7 +1048,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let zoomFactor = dist / lastTouchDist;
                 let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2; let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 applyZoomImg(zoomFactor, centerX, centerY); applyZoomMkr(zoomFactor, centerX, centerY);
-                imgZoom *= zoomFactor; sliderImg.value = imgZoom; mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom; allZoom *= zoomFactor; sliderAll.value = allZoom;
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom.toFixed(2); 
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom.toFixed(2); 
+                allZoom *= zoomFactor; sliderAll.value = allZoom.toFixed(2);
                 lastTouchDist = dist; draw();
             }
         }, {passive: false});
