@@ -30,7 +30,7 @@
         #dropZone:hover { background: #333; border-color: #888; }
         #fileInput { display: none; }
         
-        #topBar { position: absolute; top: 20px; right: 20px; display: flex; gap: 8px; align-items: center; z-index: 20; }
+        #topBar { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; align-items: center; z-index: 20; }
         .setting-btn { background: rgba(0,0,0,0.6); color: #bbb; border: 1px solid #555; border-radius: 20px; padding: 6px 14px; font-size: 0.85rem; cursor: pointer; backdrop-filter: blur(5px); transition: 0.2s; }
         .setting-btn:hover { color: #fff; background: rgba(255,255,255,0.15); }
 
@@ -96,11 +96,6 @@
         .seg-btn:last-child { border-right: none; }
         .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
-        
-        /* OD / OS 按鈕專屬特效 */
-        .active-od { background: rgba(74, 144, 226, 0.25) !important; color: #4a90e2 !important; box-shadow: inset 0 -3px 0 #4a90e2 !important; }
-        .active-os { background: rgba(255, 149, 0, 0.25) !important; color: #ff9500 !important; box-shadow: inset 0 -3px 0 #ff9500 !important; }
-
         .seg-btn:active { transform: scale(0.90); }
 
         #sliderPanel { gap: 12px; }
@@ -164,7 +159,7 @@
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text">⚡ 分析中...</div>
-        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 中斷改手動標記</button>
+        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 改手動標記</button>
     </div>
 
     <div id="logo">
@@ -176,11 +171,6 @@
     </div>
 
     <div id="topBar">
-        <!-- 【新增】將 OD/OS 實體切換按鈕放在設定旁邊 -->
-        <div class="seg-group" style="height: 32px; width: 90px;">
-            <button id="btnOD" class="seg-btn active-od" onclick="setEye('OD')">OD</button>
-            <button id="btnOS" class="seg-btn" onclick="setEye('OS')">OS</button>
-        </div>
         <button class="setting-btn" onclick="openSystemSettings()">⚙️ 設定</button>
     </div>
 
@@ -284,30 +274,20 @@
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
-        // 全域左右眼狀態 (預設 OD)
-        let currentEye = "OD";
         let aiFindings = { hemorrhage: false };
         let abortController = null; 
 
         let systemMessage = "";
         let systemMessageTimeout = null;
 
-        // --- 左上角 OD/OS 手動切換邏輯 ---
-        function setEye(eye) {
-            if (eye !== "OD" && eye !== "OS") return;
-            currentEye = eye;
-            document.getElementById('btnOD').classList.toggle('active-od', currentEye === 'OD');
-            document.getElementById('btnOS').classList.toggle('active-os', currentEye === 'OS');
-            updateDashboard(); // 瞬間重算 N/T 邏輯
-        }
-
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
+        // 即時更新左上角模型名稱
         function updateLogoModelName() {
             document.getElementById('logoSubText').innerText = getSavedModelName();
         }
-        updateLogoModelName();
+        updateLogoModelName(); 
 
         function openSystemSettings() {
             document.getElementById('apiKeyInput').value = getSavedApiKey();
@@ -430,12 +410,11 @@ Locate the Optic Disc (OD) and Optic Cup (OC).
 - The Optic Cup (OC) is the inner depression. Pay special attention to "vessel kinking" or bayoneting at the cup margin to determine its precise boundary.
 Also, evaluate for signs of glaucoma:
 - "hemorrhage": true if there is a Drance hemorrhage (disc margin hemorrhage).
-- "eye": Identify if the image is the right eye ("OD") or left eye ("OS"). (Usually, if the macula is on the left, it's OD. If macula is on the right, it's OS).
 Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings using this exact schema:
 {
   "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
-  "findings": {"hemorrhage": false, "eye": "OD"}
+  "findings": {"hemorrhage": false}
 }`;
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -461,13 +440,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 const coords = JSON.parse(rawText);
 
                 if (coords.disc && coords.cup) {
-                    if (coords.findings) {
-                        aiFindings = coords.findings;
-                        // 若 AI 辨識出 OD 或 OS，自動切換畫面左上角的按鈕
-                        if (coords.findings.eye === "OD" || coords.findings.eye === "OS") {
-                            setEye(coords.findings.eye);
-                        }
-                    }
+                    if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
                     showTempAlert('✨ AI 定位完成！ (' + displayModelName + ')');
                 } else {
@@ -476,7 +449,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    showTempAlert('🛑 已中斷連線，切換為手動模式');
+                    showTempAlert('🛑 已中斷連線，進入手動模式');
                 } else {
                     console.error("AI 分析發生錯誤:", err);
                     showTempAlert('⚠️ AI 失敗: ' + err.message.substring(0, 100));
@@ -579,28 +552,15 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (showCup && showDisc) {
                 let warnings = [];
-                let isntWarnings = []; 
                 
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
                 let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
                 let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
                 
-                // 根據全域的 currentEye 變數決定左右眼的 N/T 對應
-                let rimNasal, rimTemporal;
-                if (currentEye === "OS") { 
-                    rimNasal = rimLeft; rimTemporal = rimRight; 
-                } else { 
-                    rimNasal = rimRight; rimTemporal = rimLeft; 
-                }
-
-                // 1. 完整 ISNT 法則：整合於同一列
-                if (rimInf < rimSup * 0.9) isntWarnings.push("I < S");
-                if (rimSup < rimNasal * 0.9) isntWarnings.push("S < N");
-                if (rimNasal < rimTemporal * 0.9) isntWarnings.push("N < T");
-                
-                if (isntWarnings.length > 0) {
-                    warnings.push("⚠️ ISNT Violation: " + isntWarnings.join(", "));
+                // 1. 完整 ISNT 法則：僅保留 I < S 的警告
+                if (rimInf < rimSup * 0.95) { 
+                    warnings.push("⚠️ ISNT Violation: I < S");
                     hasWarning = true;
                 }
 
@@ -612,8 +572,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
                 if (rimSup < notchThreshV) { warnings.push("⚠️ Superior: Thinning"); hasWarning = true; }
                 if (rimInf < notchThreshV) { warnings.push("⚠️ Inferior: Thinning"); hasWarning = true; }
-                if (rimNasal < notchThreshH) { warnings.push("⚠️ Nasal: Thinning"); hasWarning = true; }
-                if (rimTemporal < notchThreshH) { warnings.push("⚠️ Temporal: Thinning"); hasWarning = true; }
+                if (rimLeft < notchThreshH) { warnings.push("⚠️ Temporal: Thinning"); hasWarning = true; } 
+                if (rimRight < notchThreshH) { warnings.push("⚠️ Nasal: Thinning"); hasWarning = true; }
 
                 // 3. 獨立列：出血
                 if (aiFindings.hemorrhage) { 
