@@ -61,9 +61,15 @@
         }
         .settings-modal h3 { margin: 0 0 20px 0; font-size: 1.3rem; color: #fff; text-align: center; }
         .settings-modal label { font-size: 0.9rem; color: #bbb; margin-bottom: 6px; font-weight: bold; }
-        .settings-modal input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #111; color: #fff; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; }
+        .settings-modal input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #111; color: #fff; box-sizing: border-box; font-size: 1rem; margin-bottom: 6px; }
         .settings-modal input:focus { outline: none; border-color: #4a90e2; }
-        .settings-btn-group { display: flex; gap: 12px; margin-top: 10px; }
+        
+        /* 新增：歷史紀錄標籤樣式 */
+        #historyTags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+        .history-tag { background: rgba(74, 144, 226, 0.15); color: #6ab0ff; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; border: 1px solid rgba(74, 144, 226, 0.4); transition: 0.2s; white-space: nowrap; }
+        .history-tag:hover { background: rgba(74, 144, 226, 0.35); color: #fff; border-color: #4a90e2; }
+
+        .settings-btn-group { display: flex; gap: 12px; margin-top: 5px; }
         .settings-btn-group button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; transition: 0.1s; }
         .btn-save { background: #4cd964; color: #111; }
         .btn-save:active { transform: scale(0.95); background: #3cb850; }
@@ -138,11 +144,13 @@
         <div class="settings-modal">
             <h3>系統設定</h3>
             <label for="modelInput">AI 模型名稱</label>
-            <input type="text" id="modelInput" list="modelList" placeholder="例如: gemini-1.5-flash">
-            <datalist id="modelList"></datalist>
+            <input type="text" id="modelInput" placeholder="例如: gemini-1.5-flash">
+            
+            <!-- 將 Datalsit 替換為穩定的點擊按鈕 -->
+            <div id="historyTags"></div>
             
             <label for="apiKeyInput">Google API Key</label>
-            <input type="password" id="apiKeyInput" placeholder="請貼上您的 API 金鑰">
+            <input type="password" id="apiKeyInput" placeholder="請貼上您的 API 金鑰" style="margin-bottom: 15px;">
             
             <div class="settings-btn-group">
                 <button class="btn-cancel" onclick="closeSettings()">取消</button>
@@ -296,12 +304,15 @@
                 history = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
             }
 
-            let dataList = document.getElementById('modelList');
-            dataList.innerHTML = '';
+            // 更新：用實體按鈕 (Chips) 取代 Datalist，確保各裝置皆可點選
+            let tagsContainer = document.getElementById('historyTags');
+            tagsContainer.innerHTML = '';
             history.forEach(model => {
-                let option = document.createElement('option');
-                option.value = model;
-                dataList.appendChild(option);
+                let span = document.createElement('span');
+                span.className = 'history-tag';
+                span.innerText = model;
+                span.onclick = () => { document.getElementById('modelInput').value = model; };
+                tagsContainer.appendChild(span);
             });
 
             document.getElementById('settingsModalOverlay').style.display = 'flex';
@@ -327,9 +338,10 @@
                     history = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
                 }
                 
+                // 去除重複並將最新輸入的排到第一位，最多保留 5 個
                 history = history.filter(m => m !== model);
                 history.unshift(model);
-                if (history.length > 8) history.length = 8;
+                if (history.length > 5) history.length = 5;
                 
                 localStorage.setItem('cdratio_model_history', JSON.stringify(history));
             }
@@ -642,12 +654,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
-                let blackCount = 0; // 計算純黑邊緣像素
                 
                 for (let i = 0; i < imgData.length; i += 4) {
-                    let lum = imgData[i]*0.3 + imgData[i+1]*0.59 + imgData[i+2]*0.11;
-                    if (lum < 10) blackCount++; // 亮度極低視為黑邊 padding
-
                     if (imgData[i] > 15) { 
                         let px = (i / 4) % tempCanvas.width; let py = Math.floor((i / 4) / tempCanvas.width);
                         if (px < minX) minX = px; if (px > maxX) maxX = px;
@@ -655,13 +663,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     }
                 }
                 
-                // 若整張圖有超過 5% 的面積是純黑色，通常代表這是未裁切的原始眼底圖 (有圓形黑邊)
-                let isFullFundus = (blackCount / (tempCanvas.width * tempCanvas.height)) > 0.05;
-                
                 let eyeCx = (minX + maxX) / 2, eyeCy = (minY + maxY) / 2;
                 let eyeRx = (maxX - minX) / 2, eyeRy = (maxY - minY) / 2;
                 let eyeR = Math.min(eyeRx, eyeRy);
-                if (eyeR <= 0) return { x: image.width / 2, y: image.height / 2, isFullFundus: isFullFundus };
+                
+                // 更新：直接回傳在原始圖片比例下，亮點的半徑 (r)
+                if (eyeR <= 0) return { x: image.width / 2, y: image.height / 2, r: image.width / 8 };
 
                 let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
                 for (let y = 0; y < tempCanvas.height; y++) {
@@ -694,7 +701,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         if (score > maxScore) { maxScore = score; bestX = x; bestY = y; }
                     }
                 }
-                return { x: bestX / scale, y: bestY / scale, isFullFundus: isFullFundus };
+                return { x: bestX / scale, y: bestY / scale, r: eyeR / scale };
             } catch(e) { return null; }
         }
 
@@ -702,14 +709,21 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
-            let isFullFundus = detected ? detected.isFullFundus : true; 
+            
+            // 如果偵測不到亮點半徑，預設為原圖的 1/8
+            let discR = (detected && detected.r > 5) ? detected.r : Math.min(img.width, img.height) / 8; 
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            // 【智慧初始縮放核心邏輯】
-            // 如果偵測到這是「有大片黑邊的完整原始圖」，就自動放大 3.5 倍；若是「局部圖」，就保持 1.0 倍
-            imgZoom = isFullFundus ? 3.5 : 1.0; 
-            mkrZoom = isFullFundus ? 3.5 : 1.0; 
+            // 【全新縮放演算法】
+            // 計算：我們要將原始圖放大多少倍，才能讓這塊「視神經盤亮區」佔據螢幕短邊的 40%？
+            let targetScreenSize = Math.min(canvas.width, canvas.height) * 0.40;
+            let currentScreenSize = (discR * 2) * baseScale;
+            let calculatedZoom = targetScreenSize / currentScreenSize;
+            
+            // 限制防呆：不管圖片多大或多小，縮放倍率最低 1.0 (不縮小超過全圖)，最高不超過 6.0
+            imgZoom = Math.max(1.0, Math.min(calculatedZoom, 6.0));
+            mkrZoom = imgZoom; 
             allZoom = imgZoom;
             
             transform.scale = baseScale * imgZoom;
@@ -717,12 +731,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             transform.y = canvas.height / 2 - discY * transform.scale;
 
             let cx = canvas.width / 2; let cy = canvas.height / 2;
-            let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            // 確保不論放大倍率為何，初始「手動量測尺標」在螢幕上的佔比都是適中的 (大約 40% 的畫面高度)
-            let markerBaseScale = isFullFundus ? 0.055 : 0.22; 
-            let dRy = baseScaledMin * mkrZoom * markerBaseScale; 
-            let dRx = baseScaledMin * mkrZoom * (markerBaseScale * 0.85); 
+            // 【標線解耦設計】
+            // 讓初始的手動標線大小，永遠固定為螢幕短邊的 44%，不被圖片本身的放大倍率影響
+            let defaultMarkerRadius = Math.min(canvas.width, canvas.height) * 0.22;
+            let dRy = defaultMarkerRadius;
+            let dRx = defaultMarkerRadius * 0.85; 
             
             let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
             let cRy = dRy * currentCDRatio, cRx = dRx * currentCDRatio; 
