@@ -41,7 +41,6 @@
         
         #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 85%; word-wrap: break-word; text-align: center; backdrop-filter: blur(5px); transition: border-color 0.3s; pointer-events: none; }
 
-        /* 載入遮罩與取消按鈕 */
         #loadingOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.75); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
@@ -52,7 +51,6 @@
         .cancel-ai-btn { background: #333; color: #ff8a80; border: 1px solid #ff3b30; padding: 10px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s; }
         .cancel-ai-btn:active { transform: scale(0.95); background: #ff3b30; color: #fff; }
 
-        /* 自訂設定視窗 */
         #settingsModalOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; backdrop-filter: blur(5px);
@@ -79,9 +77,7 @@
         #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
         #instruction td:last-child { text-align: left; white-space: nowrap; }
 
-        /* 修正 5: 將 rightControls 設為 pointer-events: none，避免空白區域擋住拖曳 */
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; pointer-events: none; }
-        /* 再將 panel-box 恢復點擊功能 */
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
         
         #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
@@ -138,7 +134,6 @@
 </head>
 <body>
 
-    <!-- 設定專屬浮動視窗 -->
     <div id="settingsModalOverlay">
         <div class="settings-modal">
             <h3>系統設定</h3>
@@ -156,7 +151,6 @@
         </div>
     </div>
 
-    <!-- 支援中斷的載入遮罩 -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text">⚡ 分析中...</div>
@@ -187,7 +181,6 @@
     
     <div id="statusDashboard"></div>
     
-    <!-- 修正 4: 左下角說明文字精簡 -->
     <div id="instruction">
         <table>
             <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>同步</td></tr>
@@ -271,7 +264,6 @@
         let pts = {};
         let transform = { scale: 1, x: 0, y: 0 };
         
-        // 將預設 zoom 改回 1.0，避免一開始載入局部圖過度放大
         let imgZoom = 1.0, mkrZoom = 1.0, allZoom = 1.0;
         
         let dragObj = null; let isDraggingCanvas = false; let lastMouse = {x: 0, y: 0}; let lastTouchDist = 0;
@@ -287,7 +279,6 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-1.5-flash'; }
 
-        // 即時更新左上角模型名稱
         function updateLogoModelName() {
             document.getElementById('logoSubText').innerText = getSavedModelName();
         }
@@ -320,7 +311,6 @@
             document.getElementById('settingsModalOverlay').style.display = 'none';
         }
 
-        // 修正 3: 確保儲存時，會將新的或已存在的模型名稱推至陣列頂端
         function saveSettings() {
             let key = document.getElementById('apiKeyInput').value.trim();
             let model = document.getElementById('modelInput').value.trim();
@@ -337,7 +327,6 @@
                     history = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
                 }
                 
-                // 移除舊的相同名稱，並推至最前面
                 history = history.filter(m => m !== model);
                 history.unshift(model);
                 if (history.length > 8) history.length = 8;
@@ -385,9 +374,6 @@
                     resetView();
                     aiFindings = { hemorrhage: false };
                     updateDashboard();
-
-                    // 修正 2: 移除了 if (getSavedApiKey()) runAILocalization(); 
-                    // 讓系統先維持手動模式，避免每次換圖都要等待 AI。
                 }
                 img.src = event.target.result;
             }
@@ -494,9 +480,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            // 修正 1：智慧縮放 (根據 AI 找到的視神經盤尺寸自動決定合適放大倍率)
             let discScreenSize = Math.max(discImgRx, discImgRy) * 2 * baseScale;
-            let desiredSize = Math.min(canvas.width, canvas.height) * 0.45; // 期望讓視神經盤佔據螢幕短邊約 45%
+            let desiredSize = Math.min(canvas.width, canvas.height) * 0.45;
             let targetZoom = desiredSize / discScreenSize;
             
             if (targetZoom < 1.0) targetZoom = 1.0;
@@ -657,7 +642,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
+                let blackCount = 0; // 計算純黑邊緣像素
+                
                 for (let i = 0; i < imgData.length; i += 4) {
+                    let lum = imgData[i]*0.3 + imgData[i+1]*0.59 + imgData[i+2]*0.11;
+                    if (lum < 10) blackCount++; // 亮度極低視為黑邊 padding
+
                     if (imgData[i] > 15) { 
                         let px = (i / 4) % tempCanvas.width; let py = Math.floor((i / 4) / tempCanvas.width);
                         if (px < minX) minX = px; if (px > maxX) maxX = px;
@@ -665,10 +655,13 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     }
                 }
                 
+                // 若整張圖有超過 5% 的面積是純黑色，通常代表這是未裁切的原始眼底圖 (有圓形黑邊)
+                let isFullFundus = (blackCount / (tempCanvas.width * tempCanvas.height)) > 0.05;
+                
                 let eyeCx = (minX + maxX) / 2, eyeCy = (minY + maxY) / 2;
                 let eyeRx = (maxX - minX) / 2, eyeRy = (maxY - minY) / 2;
                 let eyeR = Math.min(eyeRx, eyeRy);
-                if (eyeR <= 0) return null;
+                if (eyeR <= 0) return { x: image.width / 2, y: image.height / 2, isFullFundus: isFullFundus };
 
                 let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
                 for (let y = 0; y < tempCanvas.height; y++) {
@@ -701,7 +694,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         if (score > maxScore) { maxScore = score; bestX = x; bestY = y; }
                     }
                 }
-                return { x: bestX / scale, y: bestY / scale };
+                return { x: bestX / scale, y: bestY / scale, isFullFundus: isFullFundus };
             } catch(e) { return null; }
         }
 
@@ -709,13 +702,15 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
+            let isFullFundus = detected ? detected.isFullFundus : true; 
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            // 修正 1：預設不強制放大，讓使用者能清楚確認圖片是否為局部
-            imgZoom = 1.0; 
-            mkrZoom = 1.0; 
-            allZoom = 1.0;
+            // 【智慧初始縮放核心邏輯】
+            // 如果偵測到這是「有大片黑邊的完整原始圖」，就自動放大 3.5 倍；若是「局部圖」，就保持 1.0 倍
+            imgZoom = isFullFundus ? 3.5 : 1.0; 
+            mkrZoom = isFullFundus ? 3.5 : 1.0; 
+            allZoom = imgZoom;
             
             transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discX * transform.scale;
@@ -724,8 +719,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            // 放大初始手動尺標範圍，以符合 imgZoom = 1.0 時的視覺比例
-            let dRy = baseScaledMin * 0.2, dRx = baseScaledMin * 0.2; 
+            // 確保不論放大倍率為何，初始「手動量測尺標」在螢幕上的佔比都是適中的 (大約 40% 的畫面高度)
+            let markerBaseScale = isFullFundus ? 0.055 : 0.22; 
+            let dRy = baseScaledMin * mkrZoom * markerBaseScale; 
+            let dRx = baseScaledMin * mkrZoom * (markerBaseScale * 0.85); 
+            
             let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
             let cRy = dRy * currentCDRatio, cRx = dRx * currentCDRatio; 
             
