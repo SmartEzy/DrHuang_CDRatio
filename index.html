@@ -100,12 +100,16 @@
             user-select: none; 
         }
 
+        /* 手機版響應式設計修正 */
         @media (max-width: 600px) {
             #logo { top: 15px; left: 15px; }
             #logo img { height: 28px !important; }
             #logoText { font-size: 1.1rem; margin-left: 8px; }
             #topBar { top: 15px; right: 15px; }
-            #infoBar { top: 15px; left: auto; right: 90px; transform: none; font-size: 1rem; padding: 6px 12px; }
+            /* 修正重疊問題：將數值列移到中央偏下 */
+            #infoBar { top: 60px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
+            /* 提示訊息也要跟著往下移避免擋住 */
+            #statusToast { top: 105px; }
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
@@ -244,7 +248,6 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
-        // 【修改】將模型設定移至第一步，API Key 移至第二步
         function openSystemSettings() {
             let currentModel = getSavedModelName();
             let newModel = prompt('[步驟 1/2]\n請確認要使用的 AI 模型名稱：\n(建議直接使用預設，速度最快)', currentModel);
