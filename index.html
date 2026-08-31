@@ -224,8 +224,8 @@
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
-        // 修正：紀錄 Notching 的具體方位
-        let aiFindings = { notching_location: "None", hemorrhage: false };
+        // 拔除 AI 對 Notch 的判定權，只保留出血點
+        let aiFindings = { hemorrhage: false };
 
         let systemMessage = "";
         let systemMessageTimeout = null;
@@ -279,7 +279,7 @@
                     
                     showCup = false; showDisc = true; updateSegUI();
                     resetView();
-                    aiFindings = { notching_location: "None", hemorrhage: false };
+                    aiFindings = { hemorrhage: false };
                     updateDashboard();
 
                     if (getSavedApiKey()) runAILocalization();
@@ -296,10 +296,9 @@
 
             loadingOverlay.style.display = 'flex';
             let modelName = getSavedModelName();
-            aiFindings = { notching_location: "None", hemorrhage: false }; 
+            aiFindings = { hemorrhage: false }; 
 
             try {
-                // 【核心優化】自動壓縮傳送給 API 的圖片尺寸，極大幅降低傳輸與運算時間
                 const MAX_API_SIZE = 1024;
                 const apiCanvas = document.createElement('canvas');
                 let scale = Math.min(MAX_API_SIZE / img.width, MAX_API_SIZE / img.height, 1);
@@ -311,20 +310,19 @@
                 const apiBase64 = apiCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
                 const mimeType = 'image/jpeg';
 
-                // 【指令優化】明確定義 Notching 方位
+                // 修正 Prompt：只負責畫框與找 Disc Hemorrhage，不猜 Notch
                 const promptText = `
 You are an expert ophthalmologist AI. Analyze this fundus photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
 - The Optic Disc (OD) is the outer boundary.
 - The Optic Cup (OC) is the inner depression. Pay special attention to "vessel kinking" or bayoneting at the cup margin to determine its precise boundary.
 Also, evaluate for signs of glaucoma:
-- "notching_location": Identify if there is focal, localized neuroretinal rim thinning (notching). Return the location as "Superior", "Inferior", "Temporal", "Nasal", or "None".
 - "hemorrhage": true if there is a Drance hemorrhage (disc margin hemorrhage).
 Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings using this exact schema:
 {
   "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
-  "findings": {"notching_location": "None", "hemorrhage": false}
+  "findings": {"hemorrhage": false}
 }`;
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -447,7 +445,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             setCDRatio(sliderCD.value);
         }
 
-        // 核心更新：精準 ISNT 與 Notching 判讀邏輯
+        // 核心更新：拔除 AI 幻覺，全部改用您微調的絕對幾何來判斷
         function updateDashboard() {
             let content = "";
             let hasWarning = false;
@@ -458,30 +456,36 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (showCup && showDisc) {
                 let warnings = [];
+                
+                // 取得上下左右盤沿的真實螢幕距離
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
+                let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
+                let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
+                
+                let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
+                let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
 
-                // 1. ISNT 法則基礎判定：正常應為 I >= S
-                if (rimInf < rimSup * 0.95 && rimSup < rimInf * 2.5) {
-                    // I 真的比 S 窄，這違反 ISNT (下方變薄)
+                // 1. 判斷基本 ISNT 法則 (僅當 I 小於 S 時警告)
+                if (rimInf < rimSup * 0.9) {
                     warnings.push("⚠️ ISNT: I < S"); 
                     hasWarning = true;
                 }
-                
-                // 2. 幾何上的極度狹窄 (Notch)
-                if (rimSup < rimInf * 0.4) {
-                    warnings.push("⚠️ Superior S << I (Notch?)");
-                    hasWarning = true;
-                } else if (rimInf < rimSup * 0.4) {
-                    warnings.push("⚠️ Inferior I << S (Notch?)");
-                    hasWarning = true;
-                }
 
-                // 3. AI 的臨床發現回報
-                if (aiFindings.notching_location && aiFindings.notching_location !== "None" && aiFindings.notching_location !== false) { 
-                    warnings.push(`⚠️ ${aiFindings.notching_location}: Notching`); 
+                // 2. 判斷各方位 Notching (當盤沿厚度低於該軸直徑的 6% 時觸發)
+                let notchThreshV = discV * 0.06;
+                let notchThreshH = discH * 0.06;
+
+                if (rimSup < notchThreshV) { warnings.push("⚠️ Superior: Notch"); hasWarning = true; }
+                if (rimInf < notchThreshV) { warnings.push("⚠️ Inferior: Notch"); hasWarning = true; }
+                
+                // 水平方向 (N/T) 若極度變薄，也會精準抓出！
+                if (rimLeft < notchThreshH || rimRight < notchThreshH) { 
+                    warnings.push("⚠️ N/T: 極度變薄"); 
                     hasWarning = true; 
                 }
+
+                // 3. 保留 AI 的出血點偵測
                 if (aiFindings.hemorrhage) { 
                     warnings.push("🩸 Disc Hemorrhage"); 
                     hasWarning = true; 
@@ -838,8 +842,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     }
                 } else if (dragObj.type === 'line') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
-                    dragObj.pts[0].x += dx; dragObj.pts[0].y += dy;
-                    dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
+                    dragObj.pts[0].x += dx; dragObj.pts[0].y += dy; dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                 }
                 lastMouse = {x: mouseX, y: mouseY};
