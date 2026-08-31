@@ -37,10 +37,8 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        /* 階段二：警示看板 UI */
-        #warningBar { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(40,10,10,0.85); padding: 8px 16px; border-radius: 15px; border: 1px solid #ff3b30; color: #ff8a80; font-size: 0.95rem; font-weight: bold; z-index: 10; pointer-events: none; box-shadow: 0 4px 12px rgba(255,59,48,0.2); white-space: nowrap; text-align: center; line-height: 1.6; backdrop-filter: blur(5px); }
-
-        #statusToast { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; color: #4cd964; padding: 10px 20px; border-radius: 20px; font-size: 0.9rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; text-align: center; }
+        /* 單一動態看板 UI */
+        #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 85%; word-wrap: break-word; text-align: center; backdrop-filter: blur(5px); transition: border-color 0.3s; pointer-events: none; }
 
         #loadingOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -96,16 +94,13 @@
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
-        /* 手機版響應式設計修正 */
         @media (max-width: 600px) {
             #logo { top: 12px; left: 15px; }
             #logo img { height: 28px !important; }
             #logoText { font-size: 1.1rem; margin-left: 8px; }
             #topBar { top: 15px; right: 15px; }
-            /* 縮減按鈕文字後，V/H 面板完美回到頂部置中 */
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
-            #warningBar { top: 65px; font-size: 0.85rem; padding: 6px 12px; }
-            #statusToast { top: 65px; }
+            #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; }
             #instruction { display: none !important; } 
             #rightControls { right: 15px; bottom: 20px; gap: 10px; }
             .panel-box { padding: 12px; border-radius: 12px; }
@@ -118,7 +113,7 @@
 
     <div id="loadingOverlay">
         <div class="spinner"></div>
-        <div class="loading-text">⚡ 影像上傳與 AI 分析中，請稍候...</div>
+        <div class="loading-text">⚡ 影像上傳與 AI 分析中...</div>
     </div>
 
     <div id="logo">
@@ -127,7 +122,6 @@
     </div>
 
     <div id="topBar">
-        <!-- 手機版按鈕文字已簡化為「設定」 -->
         <button class="setting-btn" onclick="openSystemSettings()">⚙️ 設定</button>
     </div>
 
@@ -141,10 +135,8 @@
         <span class="label">H:</span><span id="hRatio" class="val">0.00</span>
     </div>
     
-    <!-- 階段二：臨床警示看板 -->
-    <div id="warningBar"></div>
-
-    <div id="statusToast"></div>
+    <!-- 整合後的單一動態看板 -->
+    <div id="statusDashboard"></div>
     
     <div id="instruction">
         <table>
@@ -209,8 +201,7 @@
         const fileInput = document.getElementById('fileInput');
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
-        const warningBar = document.getElementById('warningBar');
-        const statusToast = document.getElementById('statusToast');
+        const statusDashboard = document.getElementById('statusDashboard');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const instruction = document.getElementById('instruction');
         const rightControls = document.getElementById('rightControls');
@@ -246,8 +237,11 @@
         let showCup = false;  
         let showDisc = true;  
         
-        // 儲存 AI 回傳的特徵判定
         let aiFindings = { notching: false, hemorrhage: false };
+
+        // 系統暫時提示訊息系統
+        let systemMessage = "";
+        let systemMessageTimeout = null;
 
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
@@ -257,26 +251,26 @@
             let newModel = prompt('[步驟 1/2]\n請確認要使用的 AI 模型名稱：\n(建議直接使用預設，速度最快)', currentModel);
             
             if (newModel !== null) {
-                if (newModel.trim() !== '') {
-                    localStorage.setItem('cdratio_gemini_model', newModel.trim());
-                }
+                if (newModel.trim() !== '') localStorage.setItem('cdratio_gemini_model', newModel.trim());
                 
                 let currentKey = getSavedApiKey();
                 let newKey = prompt('[步驟 2/2]\n請貼上您的 Google Gemini API Key：\n(若無更改請直接按確定保留原狀)', currentKey);
                 
                 if (newKey !== null) {
-                    if (newKey.trim() !== '') {
-                        localStorage.setItem('cdratio_gemini_api_key', newKey.trim());
-                    }
-                    showToast('✅ 系統設定已更新並儲存！');
+                    if (newKey.trim() !== '') localStorage.setItem('cdratio_gemini_api_key', newKey.trim());
+                    showTempAlert('✅ 系統設定已更新並儲存！');
                 }
             }
         }
 
-        function showToast(msg, duration = 4000) {
-            statusToast.innerText = msg;
-            statusToast.style.display = 'block';
-            setTimeout(() => { statusToast.style.display = 'none'; }, duration);
+        function showTempAlert(msg, duration = 4000) {
+            systemMessage = msg;
+            updateDashboard();
+            if (systemMessageTimeout) clearTimeout(systemMessageTimeout);
+            systemMessageTimeout = setTimeout(() => {
+                systemMessage = "";
+                updateDashboard();
+            }, duration);
         }
 
         window.addEventListener('dragover', (e) => e.preventDefault());
@@ -302,23 +296,16 @@
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
                     rightControls.style.display = 'flex';
-                    
                     if (window.innerWidth > 600) instruction.style.display = 'block';
-                    
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     
-                    showCup = false;
-                    showDisc = true;
-                    updateSegUI();
-
+                    showCup = false; showDisc = true; updateSegUI();
                     resetView();
-                    aiFindings = { notching: false, hemorrhage: false }; // 重置臨床發現
-                    updateWarnings();
+                    aiFindings = { notching: false, hemorrhage: false };
+                    updateDashboard();
 
-                    if (getSavedApiKey()) {
-                        runAILocalization();
-                    }
+                    if (getSavedApiKey()) runAILocalization();
                 }
                 img.src = event.target.result;
             }
@@ -334,19 +321,18 @@
             }
 
             if (!rawBase64) {
-                showToast('請先載入眼底影像');
+                showTempAlert('⚠️ 請先載入眼底影像');
                 return;
             }
 
             loadingOverlay.style.display = 'flex';
             let modelName = getSavedModelName();
-            aiFindings = { notching: false, hemorrhage: false }; // 呼叫前先重置
+            aiFindings = { notching: false, hemorrhage: false }; 
 
             try {
                 const base64Data = rawBase64.split(',')[1];
                 const mimeType = rawBase64.split(',')[0].split(':')[1].split(';')[0];
 
-                // 階段二：升級版 Prompt (加入血管轉折、出血與 Notching 偵測)
                 const promptText = `
 You are an expert ophthalmologist AI. Analyze this fundus photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
@@ -368,15 +354,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: promptText },
-                                { inline_data: { mime_type: mimeType, data: base64Data } }
-                            ]
-                        }],
-                        generationConfig: {
-                            response_mime_type: "application/json"
-                        }
+                        contents: [{ parts: [ { text: promptText }, { inline_data: { mime_type: mimeType, data: base64Data } } ] }],
+                        generationConfig: { response_mime_type: "application/json" }
                     })
                 });
 
@@ -387,24 +366,21 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
 
                 const data = await response.json();
                 let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                
                 if (!rawText) throw new Error('AI 回傳為空');
 
                 const coords = JSON.parse(rawText);
 
                 if (coords.disc && coords.cup) {
-                    if (coords.findings) {
-                        aiFindings = coords.findings;
-                    }
+                    if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    showToast('✨ AI 定位與特徵分析完成！可手動微調');
+                    showTempAlert('✨ AI 定位完成！可手動微調');
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
 
             } catch (err) {
                 console.error("AI 分析發生錯誤:", err);
-                showToast('⚠️ AI 失敗，已切換手動模式: ' + err.message.substring(0, 150));
+                showTempAlert('⚠️ AI 失敗: ' + err.message.substring(0, 100));
             } finally {
                 loadingOverlay.style.display = 'none';
             }
@@ -426,9 +402,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
             transform.x = canvas.width / 2 - discImgCx * transform.scale;
             transform.y = canvas.height / 2 - discImgCy * transform.scale;
 
-            function toScreen(ix, iy) {
-                return { x: transform.x + ix * transform.scale, y: transform.y + iy * transform.scale };
-            }
+            function toScreen(ix, iy) { return { x: transform.x + ix * transform.scale, y: transform.y + iy * transform.scale }; }
 
             let d_top = toScreen(discImgCx, discImgCy - discImgRy);
             let d_bot = toScreen(discImgCx, discImgCy + discImgRy);
@@ -441,20 +415,13 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
             let c_right = toScreen(cupImgCx + cupImgRx, cupImgCy);
 
             pts = {
-                d_v1: { x: d_top.x, y: d_top.y, color: dColor },
-                d_v2: { x: d_bot.x, y: d_bot.y, color: dColor },
-                c_v1: { x: c_top.x, y: c_top.y, color: cColor },
-                c_v2: { x: c_bot.x, y: c_bot.y, color: cColor },
-                d_h1: { x: d_left.x, y: d_left.y, color: dColor },
-                d_h2: { x: d_right.x, y: d_right.y, color: dColor },
-                c_h1: { x: c_left.x, y: c_left.y, color: cColor },
-                c_h2: { x: c_right.x, y: c_right.y, color: cColor }
+                d_v1: { x: d_top.x, y: d_top.y, color: dColor }, d_v2: { x: d_bot.x, y: d_bot.y, color: dColor },
+                c_v1: { x: c_top.x, y: c_top.y, color: cColor }, c_v2: { x: c_bot.x, y: c_bot.y, color: cColor },
+                d_h1: { x: d_left.x, y: d_left.y, color: dColor }, d_h2: { x: d_right.x, y: d_right.y, color: dColor },
+                c_h1: { x: c_left.x, y: c_left.y, color: cColor }, c_h2: { x: c_right.x, y: c_right.y, color: cColor }
             };
 
-            showCup = true;
-            showDisc = true;
-            updateSegUI();
-            draw();
+            showCup = true; showDisc = true; updateSegUI(); draw();
         }
 
         function toggleSeg(type) {
@@ -464,8 +431,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
                 if (showCup && showDisc) { showCup = false; showDisc = false; } 
                 else { showCup = true; showDisc = true; }
             }
-            updateSegUI();
-            draw();
+            updateSegUI(); draw();
         }
 
         function updateSegUI() {
@@ -476,14 +442,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
         function setCDRatio(ratioVal) {
             isUpdatingCD = true; 
             let targetV = parseFloat(ratioVal);
-            
             if (!showCup || !showDisc) { showCup = true; showDisc = true; updateSegUI(); }
 
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
-
-            let targetCupV = discV * targetV;
-            let targetCupH = discH * targetV;
+            let targetCupV = discV * targetV, targetCupH = discH * targetV;
 
             let dv_cy = (pts.d_v1.y + pts.d_v2.y) / 2;
             pts.c_v1.y = dv_cy - (targetCupV / 2); pts.c_v1.x = pts.d_v1.x; 
@@ -506,10 +469,64 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
             setCDRatio(sliderCD.value);
         }
 
+        // 核心功能：動態更新單一儀表板 (修正醫學邏輯)
+        function updateDashboard() {
+            let content = "";
+            let hasWarning = false;
+
+            if (systemMessage) {
+                content += `<div style="color: #4cd964;">${systemMessage}</div>`;
+            }
+
+            if (showCup && showDisc) {
+                let warnings = [];
+                let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
+                let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
+
+                // 醫學邏輯區分：ISNT 違反 vs. 局部 Notch
+                if (rimSup < rimInf * 0.4) {
+                    warnings.push("⚠️ S << I (Notch?)"); // S 極度變薄 (Notching)
+                    hasWarning = true;
+                } else if (rimInf < rimSup * 0.95) {
+                    warnings.push("⚠️ ISNT: I < S"); // I 變薄 (違反 ISNT)
+                    hasWarning = true;
+                }
+
+                if (aiFindings.notching) { warnings.push("⚠️ AI: Notching"); hasWarning = true; }
+                if (aiFindings.hemorrhage) { warnings.push("🩸 Disc Hemorrhage"); hasWarning = true; }
+
+                if (warnings.length > 0) {
+                    let mt = systemMessage ? 'margin-top: 6px;' : '';
+                    content += `<div style="color: #ff8a80; font-weight: bold; ${mt}">${warnings.join(' &nbsp;|&nbsp; ')}</div>`;
+                }
+            }
+
+            if (content !== "") {
+                statusDashboard.innerHTML = content;
+                statusDashboard.style.borderColor = hasWarning ? '#ff3b30' : '#4cd964';
+                statusDashboard.style.display = 'block';
+            } else {
+                statusDashboard.style.display = 'none';
+            }
+        }
+
+        function calculateRatio() {
+            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
+            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
+            let vRatio = (discV === 0) ? 0 : (cupV / discV); let hRatio = (discH === 0) ? 0 : (cupH / discH);
+            
+            document.getElementById('vRatio').innerText = vRatio.toFixed(2);
+            document.getElementById('hRatio').innerText = hRatio.toFixed(2);
+
+            if(!isUpdatingCD && document.activeElement !== sliderCD) {
+                sliderCD.value = vRatio.toFixed(2);
+            }
+            updateDashboard(); // 即時更新儀表板
+        }
+
         function detectBrightCenter(image) {
             try {
-                const tempCanvas = document.createElement('canvas');
-                const tCtx = tempCanvas.getContext('2d');
+                const tempCanvas = document.createElement('canvas'); const tCtx = tempCanvas.getContext('2d');
                 const scale = 64 / image.width;
                 tempCanvas.width = 64; tempCanvas.height = Math.floor(image.height * scale);
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
@@ -603,53 +620,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
             return dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
         }
 
-        // 階段二核心：動態分析 ISNT 法則與臨床警告
-        function updateWarnings() {
-            if (!showCup || !showDisc) {
-                warningBar.style.display = 'none';
-                return;
-            }
-
-            let warnings = [];
-            // 計算上、下方盤沿厚度 (螢幕座標：y越小代表在畫面上方，但眼底圖可能上下顛倒，這裡以畫面上的幾何絕對值計算)
-            let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
-            let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
-
-            // ISNT 法則：正常情況下 Inferior (下方) 應 >= Superior (上方)。
-            // 由於眼底圖相機可能倒立，我們判斷如果其中一邊顯著變薄，提出警告
-            if (rimInf < rimSup * 0.85) {
-                warnings.push("⚠️ 下方盤沿 (I) 較上方 (S) 異常變薄");
-            } else if (rimSup < rimInf * 0.85) {
-                warnings.push("⚠️ 上方盤沿 (S) 較下方 (I) 異常變薄");
-            }
-
-            // AI 的特定特徵回報
-            if (aiFindings.notching) warnings.push("⚠️ AI 偵測到 Notching (盤沿凹陷)");
-            if (aiFindings.hemorrhage) warnings.push("🩸 AI 偵測到 Disc Hemorrhage");
-
-            if (warnings.length > 0) {
-                warningBar.innerHTML = warnings.join('<br>');
-                warningBar.style.display = 'block';
-            } else {
-                warningBar.style.display = 'none';
-            }
-        }
-
-        function calculateRatio() {
-            let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
-            let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
-            let vRatio = (discV === 0) ? 0 : (cupV / discV); let hRatio = (discH === 0) ? 0 : (cupH / discH);
-            
-            document.getElementById('vRatio').innerText = vRatio.toFixed(2);
-            document.getElementById('hRatio').innerText = hRatio.toFixed(2);
-
-            if(!isUpdatingCD && document.activeElement !== sliderCD) {
-                sliderCD.value = vRatio.toFixed(2);
-            }
-            // 每次拉動座標後，即時更新警示
-            updateWarnings();
-        }
-
         function getCenter() {
             let avgX = 0, avgY = 0;
             for (let key in pts) { avgX += pts[key].x; avgY += pts[key].y; }
@@ -674,58 +644,44 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and boolean fi
         function stepZoom(type, delta) {
             let slider = document.getElementById('slider' + type);
             let newVal = parseFloat(slider.value) + delta;
-            
             if (newVal < parseFloat(slider.min)) newVal = parseFloat(slider.min);
             if (newVal > parseFloat(slider.max)) newVal = parseFloat(slider.max);
-            
             slider.value = newVal;
             slider.dispatchEvent(new Event('input'));
         }
 
         sliderImg.addEventListener('input', (e) => {
-            let val = parseFloat(e.target.value);
-            let factor = val / imgZoom;
-            applyZoomImg(factor, canvas.width/2, canvas.height/2);
-            imgZoom = val; draw();
+            let val = parseFloat(e.target.value); let factor = val / imgZoom;
+            applyZoomImg(factor, canvas.width/2, canvas.height/2); imgZoom = val; draw();
         });
 
         sliderMkr.addEventListener('input', (e) => {
-            let val = parseFloat(e.target.value);
-            let factor = val / mkrZoom;
-            let center = getCenter();
-            applyZoomMkr(factor, center.x, center.y);
-            mkrZoom = val; draw();
+            let val = parseFloat(e.target.value); let factor = val / mkrZoom;
+            applyZoomMkr(factor, getCenter().x, getCenter().y); mkrZoom = val; draw();
         });
 
         sliderAll.addEventListener('input', (e) => {
-            let val = parseFloat(e.target.value);
-            let factor = val / allZoom;
+            let val = parseFloat(e.target.value); let factor = val / allZoom;
             let cx = canvas.width/2; let cy = canvas.height/2;
-            applyZoomImg(factor, cx, cy);
-            applyZoomMkr(factor, cx, cy);
-            imgZoom *= factor; sliderImg.value = imgZoom;
-            mkrZoom *= factor; sliderMkr.value = mkrZoom;
-            allZoom = val; draw();
+            applyZoomImg(factor, cx, cy); applyZoomMkr(factor, cx, cy);
+            imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
         function drawMarkersOverlay(context) {
             if (!showDisc && !showCup) return; 
-            
             context.save();
             
             if (showDisc) {
                 for (let i = 1; i <= 9; i++) {
                     if (i === 5) continue;
                     let f = i / 10;
-                    let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x);
-                    let vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
+                    let vx = pts.d_v1.x + f * (pts.d_v2.x - pts.d_v1.x), vy = pts.d_v1.y + f * (pts.d_v2.y - pts.d_v1.y);
                     context.beginPath(); context.arc(vx, vy, 2.5, 0, Math.PI*2);
                     context.fillStyle = 'rgba(255, 255, 255, 0.7)'; context.fill();
                     context.beginPath(); context.arc(vx, vy, 1.5, 0, Math.PI*2);
                     context.fillStyle = dColor; context.fill();
 
-                    let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x);
-                    let hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
+                    let hx = pts.d_h1.x + f * (pts.d_h2.x - pts.d_h1.x), hy = pts.d_h1.y + f * (pts.d_h2.y - pts.d_h1.y);
                     context.beginPath(); context.arc(hx, hy, 2.5, 0, Math.PI*2);
                     context.fillStyle = 'rgba(255, 255, 255, 0.7)'; context.fill();
                     context.beginPath(); context.arc(hx, hy, 1.5, 0, Math.PI*2);
