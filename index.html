@@ -349,7 +349,7 @@
                     showCup = false; showDisc = true; updateSegUI();
                     aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
                     
-                    // 初始載入：直接進入手動模式 (不觸發 AI)
+                    // 初始載入：進入手動模式，自動套用最佳解剖比例
                     resetView();
                     updateDashboard();
                 }
@@ -460,7 +460,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let discImgRx = (Math.abs(coords.disc.xmax - coords.disc.xmin) / 2) * img.width;
             let discImgRy = (Math.abs(coords.disc.ymax - coords.disc.ymin) / 2) * img.height;
 
-            // 強制 Cup 共心對齊，避免紅綠線斜歪
+            // 強制 Cup 中心對齊 Disc 中心，避免紅綠線斜歪錯位
             let cupImgCx = discImgCx;
             let cupImgCy = discImgCy;
             let cupImgRx = (Math.abs(coords.cup.xmax - coords.cup.xmin) / 2) * img.width;
@@ -468,7 +468,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            let desiredScale = (canvas.height * 0.4) / (discImgRy * 2);
+            let desiredScale = (canvas.height * 0.35) / (discImgRy * 2);
             imgZoom = desiredScale / baseScale;
             imgZoom = Math.max(0.5, Math.min(imgZoom, 10.0));
 
@@ -566,6 +566,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
                 let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
                 
+                // ISNT 法則：僅針對 I < S
                 if (rimInf < rimSup * 0.95) { 
                     warnings.push("⚠️ ISNT Violation: I < S");
                     hasWarning = true;
@@ -627,8 +628,17 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 
                 let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
                 let maxB = 0;
+                
+                // 遮罩：忽略圖片外圍 25% 的區域，避免誤抓鏡頭邊緣高光
+                let cx_img = tempCanvas.width / 2;
+                let cy_img = tempCanvas.height / 2;
+                let maxR2 = Math.pow(Math.min(cx_img, cy_img) * 0.75, 2); 
+
                 for (let y = 0; y < tempCanvas.height; y++) {
                     for (let x = 0; x < tempCanvas.width; x++) {
+                        let dx = x - cx_img; let dy = y - cy_img;
+                        if (dx*dx + dy*dy > maxR2) continue; // 略過邊緣
+
                         let idx = (y * tempCanvas.width + x) * 4;
                         let b = imgData[idx]*0.3 + imgData[idx+1]*0.59 + imgData[idx+2]*0.11;
                         bMap[y * tempCanvas.width + x] = b;
@@ -638,30 +648,20 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
 
                 let thresh = maxB * 0.85;
                 let sumX = 0, sumY = 0, count = 0;
-                let minX = 999, maxX = -1, minY = 999, maxY = -1;
 
                 for (let y = 0; y < tempCanvas.height; y++) {
                     for (let x = 0; x < tempCanvas.width; x++) {
                         if (bMap[y * tempCanvas.width + x] >= thresh) {
                             sumX += x; sumY += y; count++;
-                            if (x < minX) minX = x; if (x > maxX) maxX = x;
-                            if (y < minY) minY = y; if (y > maxY) maxY = y;
                         }
                     }
                 }
 
                 if (count === 0) return null;
-
                 let cx = (sumX / count) / scale;
                 let cy = (sumY / count) / scale;
-                let rx = ((maxX - minX) / 2) / scale;
-                let ry = ((maxY - minY) / 2) / scale;
-                let r = Math.max(rx, ry);
 
-                if (r < image.width * 0.02) r = image.height * 0.1;
-                if (r > image.width * 0.3) r = image.height * 0.1;
-
-                return { x: cx, y: cy, r: r };
+                return { x: cx, y: cy };
             } catch(e) { return null; }
         }
 
@@ -669,11 +669,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
-            let discR = detected ? detected.r : img.height * 0.12; 
+            
+            // 使用醫學常態假設：Disc直徑約佔圖片高度 15%
+            let defaultDiscDiameter = img.height * 0.15; 
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            let desiredScale = (canvas.height * 0.35) / (discR * 2);
+            // 固定將 Disc 放大至佔據螢幕約 35% 高度
+            let desiredScale = (canvas.height * 0.35) / defaultDiscDiameter;
             imgZoom = desiredScale / baseScale;
             imgZoom = Math.max(0.5, Math.min(imgZoom, 15.0));
 
@@ -684,7 +687,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            mkrZoom = (discR * transform.scale) / (baseScaledMin * 0.055);
+            // 尺標自動貼齊假設的 Disc 大小
+            mkrZoom = ((defaultDiscDiameter / 2) * transform.scale) / (baseScaledMin * 0.055);
             mkrZoom = Math.max(0.1, Math.min(mkrZoom, 15.0));
 
             let dRy = baseScaledMin * mkrZoom * 0.055;
@@ -764,9 +768,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
-        function drawThinningWarning(context, x, y, label) {
+        function drawWarningLabel(context, x, y, label) {
             context.font = "bold 13px sans-serif";
-            context.fillStyle = "#ffcc00";
+            context.fillStyle = "#ffcc00"; // 亮黃色警告
             context.textAlign = "center";
             context.fillText("⚠️ " + label, x, y);
         }
@@ -811,7 +815,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
-            // 圖上標示：Thinning 與 I<S
+            // 圖上標示：Thinning 與 I<S (幾何連動)
             if (showCup && showDisc) {
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
@@ -822,36 +826,37 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let threshV = discV * 0.06;
                 let threshH = discH * 0.06;
 
-                if (rimSup < threshV) drawThinningWarning(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin");
+                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin");
                 
-                // 若 Inferior 過薄，優先標示 I < S；若未達到 I<S 但達到 Thin 則標示 Thin
+                // 下方優先標示 I < S，極端時維持 I < S
                 if (rimInf < rimSup * 0.95) {
-                    drawThinningWarning(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S");
                 } else if (rimInf < threshV) {
-                    drawThinningWarning(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin");
                 }
 
-                if (rimLeft < threshH) drawThinningWarning(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin");
-                if (rimRight < threshH) drawThinningWarning(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin");
+                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin");
+                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin");
             }
 
-            // 圖上標示：Disc Hemorrhage (高對比標記)
+            // 圖上標示：Disc Hemorrhage (AI 偵測、白邊黑體字 + 符號)
             if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
                 let hx = transform.x + aiFindings.hemorrhage.x * img.width * transform.scale;
                 let hy = transform.y + aiFindings.hemorrhage.y * img.height * transform.scale;
                 
-                context.beginPath();
-                context.arc(hx, hy, 16, 0, Math.PI*2);
-                context.fillStyle = 'rgba(255, 255, 255, 0.85)';
-                context.fill();
-                context.strokeStyle = '#ff3b30';
-                context.lineWidth = 2;
-                context.stroke();
-
-                context.font = "20px sans-serif";
+                let text = "⚠️ Hemorrhage 🩸";
+                context.font = "bold 15px sans-serif";
                 context.textAlign = "center";
                 context.textBaseline = "middle";
-                context.fillText("🩸", hx, hy + 2);
+
+                // 高對比白色描邊
+                context.lineWidth = 4;
+                context.strokeStyle = "rgba(255, 255, 255, 0.9)";
+                context.strokeText(text, hx, hy);
+
+                // 紅/黃色文字本體
+                context.fillStyle = "#ff3b30";
+                context.fillText(text, hx, hy);
             }
 
             let center = getCenter();
