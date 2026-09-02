@@ -23,8 +23,8 @@
         .logo-text-group { margin-left: 12px; display: flex; flex-direction: column; }
         #logoText { font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
         
-        /* 極簡化動態標籤樣式 */
-        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 2px 6px; border-radius: 6px; display: inline-block; width: fit-content; transition: 0.3s; font-weight: bold; letter-spacing: 0.5px; }
+        /* 動態標籤樣式 */
+        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 2px 8px; border-radius: 6px; display: inline-block; width: fit-content; transition: 0.3s; letter-spacing: 0.5px; }
         
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
@@ -114,7 +114,7 @@
             #logo img { height: 28px !important; }
             .logo-text-group { margin-left: 8px; }
             #logoText { font-size: 1.1rem; }
-            #logoSubText { font-size: 0.65rem; }
+            #logoSubText { font-size: 0.65rem; padding: 2px 6px; }
             #topBar { top: 15px; right: 15px; }
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; max-width: 98%; }
@@ -273,7 +273,6 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
-        // 精簡版動態標籤 (純文字顯示，無前綴)
         function updateLogoModelName() {
             const sub = document.getElementById('logoSubText');
             const modelName = getSavedModelName();
@@ -282,15 +281,15 @@
             sub.innerText = displayName; 
             
             if (isAiMode) {
+                // AI 模式：白色字體，淡淡白底
                 sub.style.color = "#fff"; 
                 sub.style.background = "rgba(255, 255, 255, 0.15)";
-                sub.style.border = "none";
-                sub.style.textShadow = "none";
+                sub.style.fontWeight = "bold";
             } else {
-                sub.style.color = "#888";
+                // 手動模式：半透明灰白字體，完全無底色無框線，融入背景
+                sub.style.color = "rgba(255, 255, 255, 0.4)";
                 sub.style.background = "transparent"; 
-                sub.style.border = "none";
-                sub.style.textShadow = "none";
+                sub.style.fontWeight = "normal";
             }
         }
         updateLogoModelName(); 
@@ -790,7 +789,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
-        // 半透明暗色底框，移除框線，改為淡淡的透明狀，避免遮蔽細節
+        // 徹底極簡化的標籤：淡淡的透明白底，無白色描邊，不干擾視線
         function drawWarningLabel(context, x, y, label, textColor) {
             let text = "⚠️ " + label;
             context.font = "bold 13px sans-serif";
@@ -798,13 +797,13 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             context.textBaseline = "middle";
             
             let metrics = context.measureText(text);
-            let w = metrics.width + 12;
-            let h = 20;
+            let w = metrics.width + 16;
+            let h = 22;
             let px = x - w / 2;
             let py = y - h / 2;
             
-            // 非常淡淡的透明黑底，無框線
-            context.fillStyle = "rgba(0, 0, 0, 0.25)"; 
+            // 淡淡透明白底 (同 AI 模式標籤風格)
+            context.fillStyle = "rgba(255, 255, 255, 0.2)"; 
             context.beginPath();
             if (context.roundRect) {
                 context.roundRect(px, py, w, h, 6); 
@@ -813,11 +812,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             }
             context.fill();
             
-            // 為了在淺底色上維持文字清晰度，補上細微的白色輪廓
-            context.lineWidth = 2;
-            context.strokeStyle = "rgba(255, 255, 255, 0.7)";
-            context.strokeText(text, x, y + 1);
-
+            // 無框線直接填入彩色文字
             context.fillStyle = textColor; 
             context.fillText(text, x, y + 1); 
         }
@@ -872,16 +867,16 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let threshV = discV * 0.06;
                 let threshH = discH * 0.06;
 
-                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 18, "Thin", "#ffcc00");
+                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin", "#ffcc00");
                 
                 if (rimInf < rimSup * 0.95) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 18, "I < S", "#ffcc00");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S", "#ffcc00");
                 } else if (rimInf < threshV) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 18, "Thin", "#ffcc00");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin", "#ffcc00");
                 }
 
-                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 35, pts.d_h1.y, "Thin", "#ffcc00");
-                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 35, pts.d_h2.y, "Thin", "#ffcc00");
+                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin", "#ffcc00");
+                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin", "#ffcc00");
             }
 
             if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
