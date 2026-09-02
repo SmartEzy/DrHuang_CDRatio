@@ -126,7 +126,6 @@
 </head>
 <body>
 
-    <!-- 設定專屬浮動視窗 -->
     <div id="settingsModalOverlay">
         <div class="settings-modal">
             <h3>系統設定</h3>
@@ -144,7 +143,6 @@
         </div>
     </div>
 
-    <!-- 支援中斷的載入遮罩 -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text">⚡ 分析中...</div>
@@ -263,7 +261,6 @@
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
-        // 加入座標資訊以支援畫圖標示
         let aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
         let abortController = null; 
 
@@ -351,10 +348,10 @@
                     
                     showCup = false; showDisc = true; updateSegUI();
                     aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
+                    
+                    // 初始載入：直接進入手動模式 (不觸發 AI)
                     resetView();
                     updateDashboard();
-
-                    if (getSavedApiKey()) runAILocalization();
                 }
                 img.src = event.target.result;
             }
@@ -392,7 +389,6 @@
                 const apiBase64 = apiCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
                 const mimeType = 'image/jpeg';
 
-                // Prompt 改良：要求出血回傳具體座標，並強調排除 PPA 干擾
                 const promptText = `
 You are an expert ophthalmologist AI. Analyze this fundus photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
@@ -429,13 +425,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!rawText) throw new Error('AI 回傳為空');
                 
-                // 清除 AI 可能夾帶的 Markdown 格式
                 rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const coords = JSON.parse(rawText);
 
                 if (coords.disc && coords.cup) {
                     if (coords.findings && coords.findings.hemorrhage) {
-                        // 處理不同 AI 回傳格式的防呆
                         if (typeof coords.findings.hemorrhage === 'boolean') {
                             aiFindings.hemorrhage = { present: coords.findings.hemorrhage, x: 0, y: 0 };
                         } else {
@@ -466,14 +460,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let discImgRx = (Math.abs(coords.disc.xmax - coords.disc.xmin) / 2) * img.width;
             let discImgRy = (Math.abs(coords.disc.ymax - coords.disc.ymin) / 2) * img.height;
 
-            let cupImgCx = ((coords.cup.xmin + coords.cup.xmax) / 2) * img.width;
-            let cupImgCy = ((coords.cup.ymin + coords.cup.ymax) / 2) * img.height;
+            // 強制 Cup 共心對齊，避免紅綠線斜歪
+            let cupImgCx = discImgCx;
+            let cupImgCy = discImgCy;
             let cupImgRx = (Math.abs(coords.cup.xmax - coords.cup.xmin) / 2) * img.width;
             let cupImgRy = (Math.abs(coords.cup.ymax - coords.cup.ymin) / 2) * img.height;
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            // 智慧相機：根據 AI 找到的 Disc 半徑，精準拉近視野 (讓 Disc 佔據螢幕約 40% 高度)
             let desiredScale = (canvas.height * 0.4) / (discImgRy * 2);
             imgZoom = desiredScale / baseScale;
             imgZoom = Math.max(0.5, Math.min(imgZoom, 10.0));
@@ -490,7 +484,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let d_right = toScreen(discImgCx + discImgRx, discImgCy);
 
             let c_top = toScreen(cupImgCx, cupImgCy - cupImgRy);
-            let c_bot = toScreen(cupImgCy, cupImgCy + cupImgRy);
+            let c_bot = toScreen(cupImgCx, cupImgCy + cupImgRy);
             let c_left = toScreen(cupImgCx - cupImgRx, cupImgCy);
             let c_right = toScreen(cupImgCx + cupImgRx, cupImgCy);
 
@@ -501,7 +495,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 c_h1: { x: c_left.x, y: c_left.y, color: cColor }, c_h2: { x: c_right.x, y: c_right.y, color: cColor }
             };
 
-            // 反算 mkrZoom 以匹配 Slider
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             mkrZoom = (discImgRy * transform.scale) / (baseScaledMin * 0.055);
             mkrZoom = Math.max(0.1, Math.min(mkrZoom, 15.0));
@@ -624,7 +617,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             updateDashboard(); 
         }
 
-        // 智慧升級：尋找最亮區域並動態估算 Disc 半徑
         function detectBrightCenter(image) {
             try {
                 const tempCanvas = document.createElement('canvas'); const tCtx = tempCanvas.getContext('2d');
@@ -644,7 +636,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                     }
                 }
 
-                // 取最亮前 15% 區塊的質心與邊界，精確對準 Disc
                 let thresh = maxB * 0.85;
                 let sumX = 0, sumY = 0, count = 0;
                 let minX = 999, maxX = -1, minY = 999, maxY = -1;
@@ -667,7 +658,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let ry = ((maxY - minY) / 2) / scale;
                 let r = Math.max(rx, ry);
 
-                // 防呆機制：若抓太大或太小，給予預設值
                 if (r < image.width * 0.02) r = image.height * 0.1;
                 if (r > image.width * 0.3) r = image.height * 0.1;
 
@@ -679,11 +669,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
-            let discR = detected ? detected.r : img.height * 0.12; // 如果找不到，預設佔圖高 12%
+            let discR = detected ? detected.r : img.height * 0.12; 
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            // 智慧相機：無論原圖多大，自動將 Disc 放大到佔據螢幕約 35% 範圍
             let desiredScale = (canvas.height * 0.35) / (discR * 2);
             imgZoom = desiredScale / baseScale;
             imgZoom = Math.max(0.5, Math.min(imgZoom, 15.0));
@@ -695,7 +684,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            // 自動適配尺標大小，完美貼齊偵測到的 Disc 半徑
             mkrZoom = (discR * transform.scale) / (baseScaledMin * 0.055);
             mkrZoom = Math.max(0.1, Math.min(mkrZoom, 15.0));
 
@@ -823,7 +811,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
-            // --- 圖上標示：Thinning (動態幾何連動) ---
+            // 圖上標示：Thinning 與 I<S
             if (showCup && showDisc) {
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
@@ -835,23 +823,35 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let threshH = discH * 0.06;
 
                 if (rimSup < threshV) drawThinningWarning(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin");
-                if (rimInf < threshV) drawThinningWarning(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin");
+                
+                // 若 Inferior 過薄，優先標示 I < S；若未達到 I<S 但達到 Thin 則標示 Thin
+                if (rimInf < rimSup * 0.95) {
+                    drawThinningWarning(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S");
+                } else if (rimInf < threshV) {
+                    drawThinningWarning(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin");
+                }
+
                 if (rimLeft < threshH) drawThinningWarning(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin");
                 if (rimRight < threshH) drawThinningWarning(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin");
             }
 
-            // --- 圖上標示：Disc Hemorrhage (AI 座標) ---
+            // 圖上標示：Disc Hemorrhage (高對比標記)
             if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
                 let hx = transform.x + aiFindings.hemorrhage.x * img.width * transform.scale;
                 let hy = transform.y + aiFindings.hemorrhage.y * img.height * transform.scale;
                 
                 context.beginPath();
-                context.arc(hx, hy, 12, 0, Math.PI*2);
-                context.strokeStyle = 'rgba(255, 59, 48, 0.8)';
-                context.lineWidth = 3;
+                context.arc(hx, hy, 16, 0, Math.PI*2);
+                context.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                context.fill();
+                context.strokeStyle = '#ff3b30';
+                context.lineWidth = 2;
                 context.stroke();
-                context.font = "16px sans-serif";
-                context.fillText("🩸", hx, hy + 5);
+
+                context.font = "20px sans-serif";
+                context.textAlign = "center";
+                context.textBaseline = "middle";
+                context.fillText("🩸", hx, hy + 2);
             }
 
             let center = getCenter();
