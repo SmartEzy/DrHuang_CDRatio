@@ -24,7 +24,7 @@
         #logoText { font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
         
         /* 極簡化動態標籤樣式 */
-        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 4px 10px; border-radius: 12px; display: inline-block; width: fit-content; transition: 0.3s; font-weight: bold; letter-spacing: 0.5px; }
+        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 2px 6px; border-radius: 6px; display: inline-block; width: fit-content; transition: 0.3s; font-weight: bold; letter-spacing: 0.5px; }
         
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
@@ -69,7 +69,6 @@
         #instruction td { padding: 3px 2px; vertical-align: middle; }
         #instruction td:first-child { text-align: right; white-space: nowrap; }
         #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
-        /* 移除多餘空白，讓文字緊湊 */
         #instruction td:last-child { text-align: left; white-space: nowrap; letter-spacing: 1px; }
 
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
@@ -115,7 +114,7 @@
             #logo img { height: 28px !important; }
             .logo-text-group { margin-left: 8px; }
             #logoText { font-size: 1.1rem; }
-            #logoSubText { font-size: 0.65rem; margin-top: 2px; padding: 2px 6px; }
+            #logoSubText { font-size: 0.65rem; }
             #topBar { top: 15px; right: 15px; }
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; max-width: 98%; }
@@ -176,13 +175,12 @@
     
     <div id="statusDashboard"></div>
     
-    <!-- 左下角操作說明 (刪除空格版) -->
     <div id="instruction">
         <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>全部</td></tr>
-            <tr><td><b>+Shift</b></td><td>:</td><td>圖片</td></tr>
-            <tr><td><b>+Ctrl</b></td><td>:</td><td>尺標</td></tr>
-            <tr><td><b>+Opt/Alt</b></td><td>:</td><td>對稱</td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>全</span><span>部</span></div></td></tr>
+            <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
+            <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
+            <tr><td><b>+Opt/Alt</b></td><td>:</td><td><div class="txt-justify"><span>對</span><span>稱</span></div></td></tr>
         </table>
     </div>
 
@@ -275,23 +273,23 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
-        // 精簡版動態標籤 (只顯示型號，AI Mode 時高亮)
+        // 精簡版動態標籤 (純文字顯示，無前綴)
         function updateLogoModelName() {
             const sub = document.getElementById('logoSubText');
             const modelName = getSavedModelName();
             const displayName = modelName.replace(/-/g, ' '); 
             
-            sub.innerText = displayName; // 移除前綴，僅顯示型號
+            sub.innerText = displayName; 
             
             if (isAiMode) {
-                sub.style.color = "#4cd964"; 
-                sub.style.background = "rgba(76, 217, 100, 0.15)";
-                sub.style.border = "1px solid rgba(76, 217, 100, 0.4)";
-                sub.style.textShadow = "0 0 8px rgba(76, 217, 100, 0.4)";
+                sub.style.color = "#fff"; 
+                sub.style.background = "rgba(255, 255, 255, 0.15)";
+                sub.style.border = "none";
+                sub.style.textShadow = "none";
             } else {
-                sub.style.color = "#aaa";
-                sub.style.background = "rgba(20, 20, 20, 0.6)"; 
-                sub.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+                sub.style.color = "#888";
+                sub.style.background = "transparent"; 
+                sub.style.border = "none";
                 sub.style.textShadow = "none";
             }
         }
@@ -792,7 +790,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
-        // 全新：半透明深色膠囊底框設計，提升高亮與暗部背景下的對比度
+        // 半透明暗色底框，移除框線，改為淡淡的透明狀，避免遮蔽細節
         function drawWarningLabel(context, x, y, label, textColor) {
             let text = "⚠️ " + label;
             context.font = "bold 13px sans-serif";
@@ -800,29 +798,28 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             context.textBaseline = "middle";
             
             let metrics = context.measureText(text);
-            let w = metrics.width + 16;
-            let h = 24;
+            let w = metrics.width + 12;
+            let h = 20;
             let px = x - w / 2;
             let py = y - h / 2;
             
-            // 繪製半透明深色膠囊背景
-            context.fillStyle = "rgba(20, 20, 20, 0.75)"; 
+            // 非常淡淡的透明黑底，無框線
+            context.fillStyle = "rgba(0, 0, 0, 0.25)"; 
             context.beginPath();
             if (context.roundRect) {
-                context.roundRect(px, py, w, h, 12); 
+                context.roundRect(px, py, w, h, 6); 
             } else {
                 context.rect(px, py, w, h); 
             }
             context.fill();
             
-            // 繪製微光外框
-            context.lineWidth = 1;
-            context.strokeStyle = "rgba(255, 255, 255, 0.2)";
-            context.stroke();
-            
-            // 繪製彩色文字
+            // 為了在淺底色上維持文字清晰度，補上細微的白色輪廓
+            context.lineWidth = 2;
+            context.strokeStyle = "rgba(255, 255, 255, 0.7)";
+            context.strokeText(text, x, y + 1);
+
             context.fillStyle = textColor; 
-            context.fillText(text, x, y + 1); // +1 微調視覺垂直置中
+            context.fillText(text, x, y + 1); 
         }
 
         function drawMarkersOverlay(context) {
@@ -865,7 +862,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
-            // 圖上標示：Thinning 與 I<S (皆使用深底膠囊)
             if (showCup && showDisc) {
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
@@ -888,7 +884,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 35, pts.d_h2.y, "Thin", "#ffcc00");
             }
 
-            // 圖上標示：Disc Hemorrhage 
             if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
                 let hx = transform.x + aiFindings.hemorrhage.x * img.width * transform.scale;
                 let hy = transform.y + aiFindings.hemorrhage.y * img.height * transform.scale;
