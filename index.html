@@ -57,7 +57,14 @@
         .settings-modal label { font-size: 0.9rem; color: #bbb; margin-bottom: 6px; font-weight: bold; }
         .settings-modal input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #111; color: #fff; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; }
         .settings-modal input:focus { outline: none; border-color: #4a90e2; }
-        .settings-btn-group { display: flex; gap: 12px; margin-top: 10px; }
+        
+        /* 實體記憶膠囊的 CSS */
+        .history-capsules { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+        .history-capsule { background: rgba(255,255,255,0.1); color: #ccc; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; border: 1px solid transparent; white-space: nowrap; }
+        .history-capsule:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: #4a90e2; }
+        .history-capsule:active { transform: scale(0.95); }
+
+        .settings-btn-group { display: flex; gap: 12px; margin-top: 5px; }
         .settings-btn-group button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; transition: 0.1s; }
         .btn-save { background: #4cd964; color: #111; }
         .btn-save:active { transform: scale(0.95); background: #3cb850; }
@@ -80,7 +87,6 @@
         .action-btn { background: #333; color: #fff; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.2s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; border: 1px solid #555; }
         .action-btn:active { background: #222; transform: scale(0.95); }
         
-        /* 預設手動模式下的 AI 按鈕 (無明顯邊框) */
         .action-btn-ai { background: linear-gradient(135deg, #1e3c72, #2a5298); border: 1px solid transparent; }
         
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
@@ -115,7 +121,7 @@
             #logo img { height: 28px !important; }
             .logo-text-group { margin-left: 8px; }
             #logoText { font-size: 1.1rem; }
-            #logoSubText { font-size: 0.65rem; padding: 2px 6px; }
+            #logoSubText { font-size: 0.65rem; margin-top: 2px; padding: 2px 6px; }
             #topBar { top: 15px; right: 15px; }
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; max-width: 98%; }
@@ -133,8 +139,9 @@
         <div class="settings-modal">
             <h3>系統設定</h3>
             <label for="modelInput">AI 模型名稱</label>
-            <input type="text" id="modelInput" list="modelList" placeholder="例如: gemini-3.5-flash">
-            <datalist id="modelList"></datalist>
+            <input type="text" id="modelInput" placeholder="例如: gemini-3.5-flash" style="margin-bottom: 8px;">
+            <!-- 實體化記憶清單膠囊容器 -->
+            <div id="modelHistory" class="history-capsules"></div>
             
             <label for="apiKeyInput">Google API Key</label>
             <input type="password" id="apiKeyInput" placeholder="請貼上您的 API 金鑰">
@@ -274,7 +281,6 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
-        // 動態更新左上角模型名稱及 AI 按鈕狀態
         function updateLogoModelName() {
             const sub = document.getElementById('logoSubText');
             const aiBtn = document.querySelector('.action-btn-ai');
@@ -284,7 +290,6 @@
             sub.innerText = displayName; 
             
             if (isAiMode) {
-                // AI 模式：白色字體，淡淡白底，按鈕高亮
                 sub.style.color = "#fff"; 
                 sub.style.background = "rgba(255, 255, 255, 0.15)";
                 sub.style.fontWeight = "bold";
@@ -292,7 +297,6 @@
                 aiBtn.style.border = "1px solid #4a90e2";
                 aiBtn.style.boxShadow = "0 0 10px rgba(74, 144, 226, 0.6)";
             } else {
-                // 手動模式：半透明白，完全無底色無框線，按鈕無框
                 sub.style.color = "rgba(255, 255, 255, 0.4)";
                 sub.style.background = "transparent"; 
                 sub.style.fontWeight = "normal";
@@ -307,13 +311,19 @@
             document.getElementById('apiKeyInput').value = getSavedApiKey();
             document.getElementById('modelInput').value = getSavedModelName();
 
+            // 渲染實體記憶膠囊
             let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
-            let dataList = document.getElementById('modelList');
-            dataList.innerHTML = '';
+            let historyContainer = document.getElementById('modelHistory');
+            historyContainer.innerHTML = '';
+            
             history.forEach(model => {
-                let option = document.createElement('option');
-                option.value = model;
-                dataList.appendChild(option);
+                let cap = document.createElement('div');
+                cap.className = 'history-capsule';
+                cap.innerText = model;
+                cap.onclick = () => {
+                    document.getElementById('modelInput').value = model;
+                };
+                historyContainer.appendChild(cap);
             });
 
             document.getElementById('settingsModalOverlay').style.display = 'flex';
@@ -331,11 +341,11 @@
             if(model) {
                 localStorage.setItem('cdratio_gemini_model', model);
                 let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
-                if (!history.includes(model)) {
-                    history.unshift(model);
-                    if (history.length > 5) history.pop();
-                    localStorage.setItem('cdratio_model_history', JSON.stringify(history));
-                }
+                // 移至陣列開頭並去重複
+                history = history.filter(m => m !== model);
+                history.unshift(model);
+                if (history.length > 5) history.pop();
+                localStorage.setItem('cdratio_model_history', JSON.stringify(history));
             }
 
             updateLogoModelName(); 
@@ -582,7 +592,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             setCDRatio(sliderCD.value);
         }
 
-        // 精簡儀表板：只顯示系統狀態，不再顯示警告
         function updateDashboard() {
             if (systemMessage) {
                 statusDashboard.innerHTML = `<div style="color: #4cd964; margin-bottom: 4px; white-space: nowrap;">${systemMessage}</div>`;
@@ -755,7 +764,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
-        // 徹底極簡化的標籤：字體純白，透明黑底，無白色描邊，不干擾視線，拉開距離避免擋到橫槓
+        // 獨立標籤繪製器：純白文字，深色透明底，無描邊
         function drawWarningLabel(context, x, y, label, textColor) {
             let text = "⚠️ " + label;
             context.font = "bold 15px sans-serif";
@@ -780,7 +789,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             
             // 無框線直接填入純白字體
             context.fillStyle = textColor; 
-            // 加上 1.5 像素補償 emoji 垂直對齊偏差
             context.fillText(text, x, y + 1.5); 
         }
 
@@ -834,7 +842,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let threshV = discV * 0.06;
                 let threshH = discH * 0.06;
 
-                // 調整標籤距離，避免覆蓋到紅線小橫槓
+                // 修改標籤與線條間的安全距離，避免遮擋
                 if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 28, "Thin", "#fff");
                 
                 if (rimInf < rimSup * 0.95) {
