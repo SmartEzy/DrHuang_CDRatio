@@ -77,11 +77,12 @@
         #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
+        .action-btn { background: #333; color: #fff; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.2s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; border: 1px solid #555; }
         .action-btn:active { background: #222; transform: scale(0.95); }
-        .action-btn-ai { background: linear-gradient(135deg, #1e3c72, #2a5298); border: 1px solid #4a90e2; }
-        .action-btn-ai:active { background: #1e3c72; }
-
+        
+        /* 預設手動模式下的 AI 按鈕 (無明顯邊框) */
+        .action-btn-ai { background: linear-gradient(135deg, #1e3c72, #2a5298); border: 1px solid transparent; }
+        
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
         .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
         .seg-btn:last-child { border-right: none; }
@@ -273,23 +274,31 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
+        // 動態更新左上角模型名稱及 AI 按鈕狀態
         function updateLogoModelName() {
             const sub = document.getElementById('logoSubText');
+            const aiBtn = document.querySelector('.action-btn-ai');
             const modelName = getSavedModelName();
             const displayName = modelName.replace(/-/g, ' '); 
             
             sub.innerText = displayName; 
             
             if (isAiMode) {
-                // AI 模式：白色字體，淡淡白底
+                // AI 模式：白色字體，淡淡白底，按鈕高亮
                 sub.style.color = "#fff"; 
                 sub.style.background = "rgba(255, 255, 255, 0.15)";
                 sub.style.fontWeight = "bold";
+                
+                aiBtn.style.border = "1px solid #4a90e2";
+                aiBtn.style.boxShadow = "0 0 10px rgba(74, 144, 226, 0.6)";
             } else {
-                // 手動模式：半透明灰白字體，完全無底色無框線，融入背景
+                // 手動模式：半透明白，完全無底色無框線，按鈕無框
                 sub.style.color = "rgba(255, 255, 255, 0.4)";
                 sub.style.background = "transparent"; 
                 sub.style.fontWeight = "normal";
+                
+                aiBtn.style.border = "1px solid transparent";
+                aiBtn.style.boxShadow = "none";
             }
         }
         updateLogoModelName(); 
@@ -573,53 +582,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             setCDRatio(sliderCD.value);
         }
 
+        // 精簡儀表板：只顯示系統狀態，不再顯示警告
         function updateDashboard() {
-            let content = "";
-            let hasWarning = false;
-
             if (systemMessage) {
-                content += `<div style="color: #4cd964; margin-bottom: 4px; white-space: nowrap;">${systemMessage}</div>`;
-            }
-
-            if (showCup && showDisc) {
-                let warnings = [];
-                
-                let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
-                let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
-                let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
-                let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
-                
-                if (rimInf < rimSup * 0.95) { 
-                    warnings.push("⚠️ ISNT Violation: I < S");
-                    hasWarning = true;
-                }
-
-                let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
-                let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
-                let notchThreshV = discV * 0.06;
-                let notchThreshH = discH * 0.06;
-
-                if (rimSup < notchThreshV) { warnings.push("⚠️ Superior: Thinning"); hasWarning = true; }
-                if (rimInf < notchThreshV) { warnings.push("⚠️ Inferior: Thinning"); hasWarning = true; }
-                if (rimLeft < notchThreshH) { warnings.push("⚠️ Left: Thinning"); hasWarning = true; } 
-                if (rimRight < notchThreshH) { warnings.push("⚠️ Right: Thinning"); hasWarning = true; }
-
-                if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) { 
-                    warnings.push("⚠️ Disc Hemorrhage"); 
-                    hasWarning = true; 
-                }
-
-                if (warnings.length > 0) {
-                    let mt = systemMessage ? 'margin-top: 6px; border-top: 1px solid #555; padding-top: 6px;' : '';
-                    content += `<div style="color: #ff8a80; font-weight: bold; line-height: 1.6; text-align: left; white-space: nowrap; ${mt}">` +
-                               warnings.map(w => `<div>${w}</div>`).join('') + 
-                               `</div>`;
-                }
-            }
-
-            if (content !== "") {
-                statusDashboard.innerHTML = content;
-                statusDashboard.style.borderColor = hasWarning ? '#ff3b30' : '#4cd964';
+                statusDashboard.innerHTML = `<div style="color: #4cd964; margin-bottom: 4px; white-space: nowrap;">${systemMessage}</div>`;
+                statusDashboard.style.borderColor = '#4cd964';
                 statusDashboard.style.display = 'block';
             } else {
                 statusDashboard.style.display = 'none';
@@ -637,7 +604,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             if(!isUpdatingCD && document.activeElement !== sliderCD) {
                 sliderCD.value = vRatio.toFixed(2);
             }
-            updateDashboard(); 
         }
 
         function detectBrightCenter(image) {
@@ -789,21 +755,21 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
-        // 徹底極簡化的標籤：淡淡的透明白底，無白色描邊，不干擾視線
+        // 徹底極簡化的標籤：字體純白，透明黑底，無白色描邊，不干擾視線，拉開距離避免擋到橫槓
         function drawWarningLabel(context, x, y, label, textColor) {
             let text = "⚠️ " + label;
-            context.font = "bold 13px sans-serif";
+            context.font = "bold 15px sans-serif";
             context.textAlign = "center";
             context.textBaseline = "middle";
             
             let metrics = context.measureText(text);
             let w = metrics.width + 16;
-            let h = 22;
+            let h = 26;
             let px = x - w / 2;
             let py = y - h / 2;
             
-            // 淡淡透明白底 (同 AI 模式標籤風格)
-            context.fillStyle = "rgba(255, 255, 255, 0.2)"; 
+            // 乾淨的透明深色底框
+            context.fillStyle = "rgba(0, 0, 0, 0.35)"; 
             context.beginPath();
             if (context.roundRect) {
                 context.roundRect(px, py, w, h, 6); 
@@ -812,9 +778,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             }
             context.fill();
             
-            // 無框線直接填入彩色文字
+            // 無框線直接填入純白字體
             context.fillStyle = textColor; 
-            context.fillText(text, x, y + 1); 
+            // 加上 1.5 像素補償 emoji 垂直對齊偏差
+            context.fillText(text, x, y + 1.5); 
         }
 
         function drawMarkersOverlay(context) {
@@ -867,22 +834,23 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let threshV = discV * 0.06;
                 let threshH = discH * 0.06;
 
-                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin", "#ffcc00");
+                // 調整標籤距離，避免覆蓋到紅線小橫槓
+                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 28, "Thin", "#fff");
                 
                 if (rimInf < rimSup * 0.95) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S", "#ffcc00");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 28, "I < S", "#fff");
                 } else if (rimInf < threshV) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin", "#ffcc00");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 28, "Thin", "#fff");
                 }
 
-                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin", "#ffcc00");
-                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin", "#ffcc00");
+                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 50, pts.d_h1.y, "Thin", "#fff");
+                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 50, pts.d_h2.y, "Thin", "#fff");
             }
 
             if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
                 let hx = transform.x + aiFindings.hemorrhage.x * img.width * transform.scale;
                 let hy = transform.y + aiFindings.hemorrhage.y * img.height * transform.scale;
-                drawWarningLabel(context, hx, hy, "Hemorrhage", "#ff3b30");
+                drawWarningLabel(context, hx, hy, "Hemorrhage", "#fff");
             }
 
             let center = getCenter();
