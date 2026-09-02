@@ -22,7 +22,8 @@
         #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
         .logo-text-group { margin-left: 12px; display: flex; flex-direction: column; }
         #logoText { font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
-        #logoSubText { font-size: 0.75rem; color: #888; margin-top: 2px; letter-spacing: 0.5px; }
+        /* 更新：動態標籤樣式 */
+        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 3px 8px; border-radius: 6px; display: inline-block; width: fit-content; transition: 0.3s; font-weight: bold; letter-spacing: 0.5px; }
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
         
@@ -175,7 +176,7 @@
     
     <div id="instruction">
         <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>&amp;</span><span>尺</span></div></td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>全</span><span>部</span></div></td></tr>
             <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
             <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
             <tr><td><b>+Opt/Alt</b></td><td>:</td><td><div class="txt-justify"><span>對</span><span>稱</span></div></td></tr>
@@ -190,7 +191,7 @@
                 <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
             </div>
             <div class="action-item">
-                <button class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI 定位</button>
+                <button class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
             </div>
             <div class="action-item">
                 <button class="action-btn" onclick="resetView()">置中</button>
@@ -261,6 +262,8 @@
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
+        // 全域追蹤目前是否為 AI 分析模式
+        let isAiMode = false;
         let aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
         let abortController = null; 
 
@@ -270,8 +273,23 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
+        // 動態更新左上角模型名稱及 AI 狀態燈號
         function updateLogoModelName() {
-            document.getElementById('logoSubText').innerText = getSavedModelName();
+            const sub = document.getElementById('logoSubText');
+            const modelName = getSavedModelName();
+            const displayName = modelName.replace(/-/g, ' '); 
+            
+            if (isAiMode) {
+                sub.innerText = "✨ AI Mode: " + displayName;
+                sub.style.color = "#4cd964";
+                sub.style.background = "rgba(76, 217, 100, 0.15)";
+                sub.style.border = "1px solid rgba(76, 217, 100, 0.4)";
+            } else {
+                sub.innerText = "🖐️ Manual: " + displayName;
+                sub.style.color = "#aaa";
+                sub.style.background = "rgba(255, 255, 255, 0.1)";
+                sub.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+            }
         }
         updateLogoModelName(); 
 
@@ -349,8 +367,10 @@
                     showCup = false; showDisc = true; updateSegUI();
                     aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
                     
-                    // 初始載入：進入手動模式，自動套用最佳解剖比例
+                    // 初始載入：純手動模式，解除 AI 狀態
+                    isAiMode = false;
                     resetView();
+                    updateLogoModelName();
                     updateDashboard();
                 }
                 img.src = event.target.result;
@@ -436,8 +456,13 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                             aiFindings.hemorrhage = coords.findings.hemorrhage;
                         }
                     }
+                    
+                    // 成功獲得 AI 資料，開啟 AI 燈號標示
+                    isAiMode = true; 
+                    updateLogoModelName();
+                    
                     applyAICoordinates(coords);
-                    showTempAlert('✨ AI 定位完成！ (' + displayModelName + ')');
+                    showTempAlert('✨ AI 定位完成！');
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
@@ -460,7 +485,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let discImgRx = (Math.abs(coords.disc.xmax - coords.disc.xmin) / 2) * img.width;
             let discImgRy = (Math.abs(coords.disc.ymax - coords.disc.ymin) / 2) * img.height;
 
-            // 強制 Cup 中心對齊 Disc 中心，避免紅綠線斜歪錯位
             let cupImgCx = discImgCx;
             let cupImgCy = discImgCy;
             let cupImgRx = (Math.abs(coords.cup.xmax - coords.cup.xmin) / 2) * img.width;
@@ -566,7 +590,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
                 let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
                 
-                // ISNT 法則：僅針對 I < S
                 if (rimInf < rimSup * 0.95) { 
                     warnings.push("⚠️ ISNT Violation: I < S");
                     hasWarning = true;
@@ -629,7 +652,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
                 let maxB = 0;
                 
-                // 遮罩：忽略圖片外圍 25% 的區域，避免誤抓鏡頭邊緣高光
                 let cx_img = tempCanvas.width / 2;
                 let cy_img = tempCanvas.height / 2;
                 let maxR2 = Math.pow(Math.min(cx_img, cy_img) * 0.75, 2); 
@@ -637,7 +659,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 for (let y = 0; y < tempCanvas.height; y++) {
                     for (let x = 0; x < tempCanvas.width; x++) {
                         let dx = x - cx_img; let dy = y - cy_img;
-                        if (dx*dx + dy*dy > maxR2) continue; // 略過邊緣
+                        if (dx*dx + dy*dy > maxR2) continue; 
 
                         let idx = (y * tempCanvas.width + x) * 4;
                         let b = imgData[idx]*0.3 + imgData[idx+1]*0.59 + imgData[idx+2]*0.11;
@@ -666,16 +688,18 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
         }
 
         function resetView() {
+            // 清除 AI 模式標記，回歸手動狀態
+            isAiMode = false;
+            updateLogoModelName();
+
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
             
-            // 使用醫學常態假設：Disc直徑約佔圖片高度 15%
             let defaultDiscDiameter = img.height * 0.15; 
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            // 固定將 Disc 放大至佔據螢幕約 35% 高度
             let desiredScale = (canvas.height * 0.35) / defaultDiscDiameter;
             imgZoom = desiredScale / baseScale;
             imgZoom = Math.max(0.5, Math.min(imgZoom, 15.0));
@@ -687,7 +711,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            // 尺標自動貼齊假設的 Disc 大小
             mkrZoom = ((defaultDiscDiameter / 2) * transform.scale) / (baseScaledMin * 0.055);
             mkrZoom = Math.max(0.1, Math.min(mkrZoom, 15.0));
 
@@ -768,10 +791,19 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
-        function drawWarningLabel(context, x, y, label) {
-            context.font = "bold 13px sans-serif";
-            context.fillStyle = "#ffcc00"; // 亮黃色警告
+        // 通用的統一高對比白邊文字繪製器 (適用於所有警告與出血)
+        function drawWarningLabel(context, x, y, label, textColor) {
+            context.font = "bold 14px sans-serif";
             context.textAlign = "center";
+            context.textBaseline = "middle";
+            
+            // 實心高對比白邊
+            context.lineWidth = 4;
+            context.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            context.strokeText("⚠️ " + label, x, y);
+            
+            // 鮮豔內文
+            context.fillStyle = textColor; 
             context.fillText("⚠️ " + label, x, y);
         }
 
@@ -815,7 +847,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
-            // 圖上標示：Thinning 與 I<S (幾何連動)
+            // 圖上標示：Thinning 與 I<S 
             if (showCup && showDisc) {
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
@@ -826,37 +858,23 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let threshV = discV * 0.06;
                 let threshH = discH * 0.06;
 
-                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin");
+                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin", "#ffcc00");
                 
-                // 下方優先標示 I < S，極端時維持 I < S
                 if (rimInf < rimSup * 0.95) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S", "#ffcc00");
                 } else if (rimInf < threshV) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin", "#ffcc00");
                 }
 
-                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin");
-                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin");
+                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin", "#ffcc00");
+                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin", "#ffcc00");
             }
 
-            // 圖上標示：Disc Hemorrhage (AI 偵測、白邊黑體字 + 符號)
+            // 圖上標示：Disc Hemorrhage 統一使用文字白邊標示
             if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
                 let hx = transform.x + aiFindings.hemorrhage.x * img.width * transform.scale;
                 let hy = transform.y + aiFindings.hemorrhage.y * img.height * transform.scale;
-                
-                let text = "⚠️ Hemorrhage 🩸";
-                context.font = "bold 15px sans-serif";
-                context.textAlign = "center";
-                context.textBaseline = "middle";
-
-                // 高對比白色描邊
-                context.lineWidth = 4;
-                context.strokeStyle = "rgba(255, 255, 255, 0.9)";
-                context.strokeText(text, hx, hy);
-
-                // 紅/黃色文字本體
-                context.fillStyle = "#ff3b30";
-                context.fillText(text, hx, hy);
+                drawWarningLabel(context, hx, hy, "Hemorrhage", "#ff3b30");
             }
 
             let center = getCenter();
@@ -973,7 +991,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
 
         canvas.addEventListener('mousedown', e => {
             if (Date.now() - lastTouchTime < 500) return;
-            isTouchMode = false; 
             let mouseX = e.clientX; let mouseY = e.clientY;
             lastMouse = {x: mouseX, y: mouseY}; 
             dragObj = getHitTarget(mouseX, mouseY, false);
@@ -1019,7 +1036,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
         });
 
         canvas.addEventListener('touchstart', e => {
-            lastTouchTime = Date.now(); isTouchMode = true; 
+            lastTouchTime = Date.now(); 
             if (e.touches.length === 1) {
                 let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
                 lastMouse = { x: tx, y: ty }; 
