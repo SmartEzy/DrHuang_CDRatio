@@ -22,8 +22,10 @@
         #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
         .logo-text-group { margin-left: 12px; display: flex; flex-direction: column; }
         #logoText { font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
-        /* 更新：動態標籤樣式 */
-        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 3px 8px; border-radius: 6px; display: inline-block; width: fit-content; transition: 0.3s; font-weight: bold; letter-spacing: 0.5px; }
+        
+        /* 極簡化動態標籤樣式 */
+        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 4px 10px; border-radius: 12px; display: inline-block; width: fit-content; transition: 0.3s; font-weight: bold; letter-spacing: 0.5px; }
+        
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
         
@@ -67,8 +69,8 @@
         #instruction td { padding: 3px 2px; vertical-align: middle; }
         #instruction td:first-child { text-align: right; white-space: nowrap; }
         #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
-        #instruction td:last-child { text-align: left; white-space: nowrap; }
-        .txt-justify { display: flex; justify-content: space-between; width: 2.5em; }
+        /* 移除多餘空白，讓文字緊湊 */
+        #instruction td:last-child { text-align: left; white-space: nowrap; letter-spacing: 1px; }
 
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
@@ -113,7 +115,7 @@
             #logo img { height: 28px !important; }
             .logo-text-group { margin-left: 8px; }
             #logoText { font-size: 1.1rem; }
-            #logoSubText { font-size: 0.65rem; }
+            #logoSubText { font-size: 0.65rem; margin-top: 2px; padding: 2px 6px; }
             #topBar { top: 15px; right: 15px; }
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; max-width: 98%; }
@@ -174,12 +176,13 @@
     
     <div id="statusDashboard"></div>
     
+    <!-- 左下角操作說明 (刪除空格版) -->
     <div id="instruction">
         <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>全</span><span>部</span></div></td></tr>
-            <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
-            <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
-            <tr><td><b>+Opt/Alt</b></td><td>:</td><td><div class="txt-justify"><span>對</span><span>稱</span></div></td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>全部</td></tr>
+            <tr><td><b>+Shift</b></td><td>:</td><td>圖片</td></tr>
+            <tr><td><b>+Ctrl</b></td><td>:</td><td>尺標</td></tr>
+            <tr><td><b>+Opt/Alt</b></td><td>:</td><td>對稱</td></tr>
         </table>
     </div>
 
@@ -262,7 +265,6 @@
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
-        // 全域追蹤目前是否為 AI 分析模式
         let isAiMode = false;
         let aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
         let abortController = null; 
@@ -273,22 +275,24 @@
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
 
-        // 動態更新左上角模型名稱及 AI 狀態燈號
+        // 精簡版動態標籤 (只顯示型號，AI Mode 時高亮)
         function updateLogoModelName() {
             const sub = document.getElementById('logoSubText');
             const modelName = getSavedModelName();
             const displayName = modelName.replace(/-/g, ' '); 
             
+            sub.innerText = displayName; // 移除前綴，僅顯示型號
+            
             if (isAiMode) {
-                sub.innerText = "✨ AI Mode: " + displayName;
-                sub.style.color = "#4cd964";
+                sub.style.color = "#4cd964"; 
                 sub.style.background = "rgba(76, 217, 100, 0.15)";
                 sub.style.border = "1px solid rgba(76, 217, 100, 0.4)";
+                sub.style.textShadow = "0 0 8px rgba(76, 217, 100, 0.4)";
             } else {
-                sub.innerText = "🖐️ Manual: " + displayName;
                 sub.style.color = "#aaa";
-                sub.style.background = "rgba(255, 255, 255, 0.1)";
+                sub.style.background = "rgba(20, 20, 20, 0.6)"; 
                 sub.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+                sub.style.textShadow = "none";
             }
         }
         updateLogoModelName(); 
@@ -367,7 +371,6 @@
                     showCup = false; showDisc = true; updateSegUI();
                     aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
                     
-                    // 初始載入：純手動模式，解除 AI 狀態
                     isAiMode = false;
                     resetView();
                     updateLogoModelName();
@@ -457,7 +460,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                         }
                     }
                     
-                    // 成功獲得 AI 資料，開啟 AI 燈號標示
                     isAiMode = true; 
                     updateLogoModelName();
                     
@@ -688,7 +690,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
         }
 
         function resetView() {
-            // 清除 AI 模式標記，回歸手動狀態
             isAiMode = false;
             updateLogoModelName();
 
@@ -791,20 +792,37 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
         });
 
-        // 通用的統一高對比白邊文字繪製器 (適用於所有警告與出血)
+        // 全新：半透明深色膠囊底框設計，提升高亮與暗部背景下的對比度
         function drawWarningLabel(context, x, y, label, textColor) {
-            context.font = "bold 14px sans-serif";
+            let text = "⚠️ " + label;
+            context.font = "bold 13px sans-serif";
             context.textAlign = "center";
             context.textBaseline = "middle";
             
-            // 實心高對比白邊
-            context.lineWidth = 4;
-            context.strokeStyle = "rgba(255, 255, 255, 0.9)";
-            context.strokeText("⚠️ " + label, x, y);
+            let metrics = context.measureText(text);
+            let w = metrics.width + 16;
+            let h = 24;
+            let px = x - w / 2;
+            let py = y - h / 2;
             
-            // 鮮豔內文
+            // 繪製半透明深色膠囊背景
+            context.fillStyle = "rgba(20, 20, 20, 0.75)"; 
+            context.beginPath();
+            if (context.roundRect) {
+                context.roundRect(px, py, w, h, 12); 
+            } else {
+                context.rect(px, py, w, h); 
+            }
+            context.fill();
+            
+            // 繪製微光外框
+            context.lineWidth = 1;
+            context.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            context.stroke();
+            
+            // 繪製彩色文字
             context.fillStyle = textColor; 
-            context.fillText("⚠️ " + label, x, y);
+            context.fillText(text, x, y + 1); // +1 微調視覺垂直置中
         }
 
         function drawMarkersOverlay(context) {
@@ -847,7 +865,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
-            // 圖上標示：Thinning 與 I<S 
+            // 圖上標示：Thinning 與 I<S (皆使用深底膠囊)
             if (showCup && showDisc) {
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
@@ -858,19 +876,19 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let threshV = discV * 0.06;
                 let threshH = discH * 0.06;
 
-                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 15, "Thin", "#ffcc00");
+                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 18, "Thin", "#ffcc00");
                 
                 if (rimInf < rimSup * 0.95) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "I < S", "#ffcc00");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 18, "I < S", "#ffcc00");
                 } else if (rimInf < threshV) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 25, "Thin", "#ffcc00");
+                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 18, "Thin", "#ffcc00");
                 }
 
-                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 30, pts.d_h1.y + 5, "Thin", "#ffcc00");
-                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 30, pts.d_h2.y + 5, "Thin", "#ffcc00");
+                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 35, pts.d_h1.y, "Thin", "#ffcc00");
+                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 35, pts.d_h2.y, "Thin", "#ffcc00");
             }
 
-            // 圖上標示：Disc Hemorrhage 統一使用文字白邊標示
+            // 圖上標示：Disc Hemorrhage 
             if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
                 let hx = transform.x + aiFindings.hemorrhage.x * img.width * transform.scale;
                 let hy = transform.y + aiFindings.hemorrhage.y * img.height * transform.scale;
@@ -991,6 +1009,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
 
         canvas.addEventListener('mousedown', e => {
             if (Date.now() - lastTouchTime < 500) return;
+            isTouchMode = false; 
             let mouseX = e.clientX; let mouseY = e.clientY;
             lastMouse = {x: mouseX, y: mouseY}; 
             dragObj = getHitTarget(mouseX, mouseY, false);
@@ -1036,7 +1055,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
         });
 
         canvas.addEventListener('touchstart', e => {
-            lastTouchTime = Date.now(); 
+            lastTouchTime = Date.now(); isTouchMode = true; 
             if (e.touches.length === 1) {
                 let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
                 lastMouse = { x: tx, y: ty }; 
