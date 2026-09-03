@@ -20,9 +20,13 @@
         }
         
         #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
-        .logo-text-group { margin-left: 12px; display: flex; flex-direction: column; }
+        .logo-text-group { margin-left: 12px; display: flex; flex-direction: column; align-items: flex-start; }
         #logoText { font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
-        #logoSubText { font-size: 0.75rem; color: #888; margin-top: 2px; letter-spacing: 0.5px; }
+        
+        /* 修正 2: AI 模型標籤樣式 */
+        #logoSubText { font-size: 0.75rem; color: #888; margin-top: 4px; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 12px; background: transparent; transition: 0.3s; }
+        #logoSubText.ai-active-badge { background: rgba(136, 136, 136, 0.4); color: #fff; font-weight: bold; }
+
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
         
@@ -104,7 +108,6 @@
         .seg-btn:active { transform: scale(0.90); }
 
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
-        /* 更新：控制面板文字統一設定 */
         .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
         
         .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
@@ -286,8 +289,10 @@
         function setAIMode(active) {
             if (active) {
                 btnAI.classList.add('ai-active');
+                document.getElementById('logoSubText').classList.add('ai-active-badge');
             } else {
                 btnAI.classList.remove('ai-active');
+                document.getElementById('logoSubText').classList.remove('ai-active-badge');
             }
         }
 
@@ -504,7 +509,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
             let discScreenSize = Math.max(discImgRx, discImgRy) * 2 * baseScale;
-            let desiredSize = Math.min(canvas.width, canvas.height) * 0.45;
+            let desiredSize = Math.min(canvas.width, canvas.height) * 0.40; // 目標大小為畫面短邊 40%
             let targetZoom = desiredSize / discScreenSize;
             
             if (targetZoom < 1.0) targetZoom = 1.0;
@@ -592,7 +597,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function updateDashboard() {
-            // 修正：僅保留系統提示訊息 (例如定位完成等)，完全移除上方紅框的危險警告邏輯
+            // 移除了原始的紅框與危險警告生成，僅保留單純的系統狀態提示 (例如：✨ AI 定位完成)
             if (systemMessage) {
                 statusDashboard.innerHTML = `<div style="color: #4cd964; font-weight: bold;">${systemMessage}</div>`;
                 statusDashboard.style.borderColor = '#4cd964';
@@ -616,6 +621,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             updateDashboard(); 
         }
 
+        // 修正 3：智慧判斷完整圖與推算真實視神經盤尺寸
         function detectBrightCenter(image) {
             try {
                 const tempCanvas = document.createElement('canvas'); const tCtx = tempCanvas.getContext('2d');
@@ -625,8 +631,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
                 let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
+                let blackCount = 0;
                 
                 for (let i = 0; i < imgData.length; i += 4) {
+                    let lum = imgData[i]*0.3 + imgData[i+1]*0.59 + imgData[i+2]*0.11;
+                    if (lum < 20) blackCount++; // 計算極暗邊緣像素
+                    
                     if (imgData[i] > 15) { 
                         let px = (i / 4) % tempCanvas.width; let py = Math.floor((i / 4) / tempCanvas.width);
                         if (px < minX) minX = px; if (px > maxX) maxX = px;
@@ -636,8 +646,13 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 
                 let eyeCx = (minX + maxX) / 2, eyeCy = (minY + maxY) / 2;
                 let eyeRx = (maxX - minX) / 2, eyeRy = (maxY - minY) / 2;
-                let eyeR = Math.min(eyeRx, eyeRy);
+                let eyeR = Math.min(eyeRx, eyeRy); // 這是整個被照亮眼底區域的半徑
                 
+                // 判斷是否為無裁切的完整眼底圖 (若有超過 5% 黑邊即視為完整圖)
+                let isFullFundus = (blackCount / (tempCanvas.width * tempCanvas.height)) > 0.05;
+                // 依據是否裁切，推算視神經盤半徑。完整圖約佔 15%，裁切局部圖我們暫估佔 40%
+                let estimatedDiscR = isFullFundus ? (eyeR * 0.15) : (eyeR * 0.4);
+
                 if (eyeR <= 0) return { x: image.width / 2, y: image.height / 2, r: image.width / 8 };
 
                 let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
@@ -671,7 +686,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         if (score > maxScore) { maxScore = score; bestX = x; bestY = y; }
                     }
                 }
-                return { x: bestX / scale, y: bestY / scale, r: eyeR / scale };
+                
+                // 回傳中心座標與推算的真實視神經半徑
+                return { x: bestX / scale, y: bestY / scale, r: estimatedDiscR / scale };
             } catch(e) { return null; }
         }
 
@@ -679,11 +696,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
-            
             let discR = (detected && detected.r > 5) ? detected.r : Math.min(img.width, img.height) / 8; 
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
+            // 核心功能：動態計算放大倍率，讓推算的視神經盤尺寸剛好等於螢幕高度的 40%
             let targetScreenSize = Math.min(canvas.width, canvas.height) * 0.40;
             let currentScreenSize = (discR * 2) * baseScale;
             let calculatedZoom = targetScreenSize / currentScreenSize;
@@ -698,6 +715,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             let cx = canvas.width / 2; let cy = canvas.height / 2;
             
+            // 將測量尺標鎖定在畫面比例 44% 大小，使其自然與放大後的 Disc 貼合
             let defaultMarkerRadius = Math.min(canvas.width, canvas.height) * 0.22;
             let dRy = defaultMarkerRadius;
             let dRx = defaultMarkerRadius * 0.85; 
@@ -779,6 +797,47 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             allZoom = val; draw();
         });
 
+        // 修正 1：繪製帶有警告符號與透明底框的無邊線膠囊標籤
+        function drawWarningTag(ctx, text, x, y, align, baseline) {
+            let fullText = "⚠️ " + text;
+            ctx.font = 'bold 13px sans-serif';
+            let m = ctx.measureText(fullText);
+            let paddingX = 8;
+            let paddingY = 6;
+            let w = m.width + paddingX * 2;
+            let h = 13 + paddingY * 2; 
+
+            let rx = x;
+            let ry = y;
+            
+            if (align === 'center') rx = x - w/2;
+            else if (align === 'right') rx = x - w;
+            
+            if (baseline === 'middle') ry = y - h/2;
+            else if (baseline === 'bottom') ry = y - h;
+
+            ctx.fillStyle = 'rgba(120, 120, 120, 0.4)'; // 淡灰透明無邊線
+            
+            let r = 8; 
+            ctx.beginPath();
+            ctx.moveTo(rx + r, ry);
+            ctx.lineTo(rx + w - r, ry);
+            ctx.quadraticCurveTo(rx + w, ry, rx + w, ry + r);
+            ctx.lineTo(rx + w, ry + h - r);
+            ctx.quadraticCurveTo(rx + w, ry + h, rx + w - r, ry + h);
+            ctx.lineTo(rx + r, ry + h);
+            ctx.quadraticCurveTo(rx, ry + h, rx, ry + h - r);
+            ctx.lineTo(rx, ry + r);
+            ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff'; // 白字
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(fullText, rx + w/2, ry + h/2 + 1); 
+        }
+
         function drawMarkersOverlay(context) {
             if (!showDisc && !showCup) return; 
             context.save();
@@ -828,14 +887,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             // 繪製畫布上的警告文字 (On-Canvas Warnings)
             if (showCup && showDisc) {
                 context.save();
-                context.font = 'bold 16px sans-serif';
-                context.fillStyle = '#fff';
-                // 加入黑色陰影，避免文字在極亮的背景下看不清楚
-                context.shadowColor = 'rgba(0,0,0,0.85)';
-                context.shadowBlur = 4;
-                context.shadowOffsetX = 1;
-                context.shadowOffsetY = 1;
-
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
                 let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
@@ -845,13 +896,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let notchThreshV = discV * 0.06;
                 let notchThreshH = discH * 0.06;
                 
-                let textOffset = 25; // 距離標記橫桿 25px 安全距離
+                let textOffset = 28; // 距離標記橫桿的安全距離，避免重疊
 
                 // Superior 標註
                 if (rimSup < notchThreshV) {
-                    context.textAlign = 'center';
-                    context.textBaseline = 'bottom';
-                    context.fillText('Thin', pts.d_v1.x, pts.d_v1.y - textOffset);
+                    drawWarningTag(context, 'Thin', pts.d_v1.x, pts.d_v1.y - textOffset, 'center', 'bottom');
                 }
 
                 // Inferior 標註 (可疊加顯示)
@@ -859,33 +908,25 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (rimInf < notchThreshV) infTexts.push('Thin');
                 if (rimInf < rimSup * 0.95) infTexts.push('I < S');
                 if (infTexts.length > 0) {
-                    context.textAlign = 'center';
-                    context.textBaseline = 'top';
                     let startY = pts.d_v2.y + textOffset;
                     for (let i = 0; i < infTexts.length; i++) {
-                        context.fillText(infTexts[i], pts.d_v2.x, startY + (i * 20));
+                        drawWarningTag(context, infTexts[i], pts.d_v2.x, startY + (i * 30), 'center', 'top');
                     }
                 }
 
                 // Temporal / Nasal (左側)
                 if (rimLeft < notchThreshH) {
-                    context.textAlign = 'right';
-                    context.textBaseline = 'middle';
-                    context.fillText('Thin', pts.d_h1.x - textOffset, pts.d_h1.y);
+                    drawWarningTag(context, 'Thin', pts.d_h1.x - textOffset, pts.d_h1.y, 'right', 'middle');
                 }
 
                 // Temporal / Nasal (右側)
                 if (rimRight < notchThreshH) {
-                    context.textAlign = 'left';
-                    context.textBaseline = 'middle';
-                    context.fillText('Thin', pts.d_h2.x + textOffset, pts.d_h2.y);
+                    drawWarningTag(context, 'Thin', pts.d_h2.x + textOffset, pts.d_h2.y, 'left', 'middle');
                 }
 
-                // 出血標註 (Hemorrhage) 置於視神經盤右上方
+                // 出血標註 (Hemorrhage) 置於視神經盤右上方，不干擾四方位橫桿
                 if (aiFindings.hemorrhage) {
-                    context.textAlign = 'left';
-                    context.textBaseline = 'bottom';
-                    context.fillText('Hemorrhage', pts.d_h2.x + 15, pts.d_v1.y);
+                    drawWarningTag(context, 'Hemorrhage', pts.d_h2.x + 20, pts.d_v1.y, 'left', 'bottom');
                 }
                 
                 context.restore();
