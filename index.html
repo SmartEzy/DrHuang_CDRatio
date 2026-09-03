@@ -43,6 +43,9 @@
         
         #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.75); border: 1px solid #888; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 85%; word-wrap: break-word; text-align: center; backdrop-filter: blur(8px); transition: border-color 0.3s; pointer-events: none; }
 
+        /* 新增：越界時跟隨滑鼠的浮動警告框 */
+        #exceedWarning { display: none; position: absolute; background: rgba(0,0,0,0.75); border: 1px solid #ff3b30; color: #fff; padding: 8px 14px; border-radius: 12px; pointer-events: none; z-index: 50; font-weight: bold; font-size: 0.95rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-shadow: 0 0 5px rgba(255,59,48,0.5); transform: translate(20px, 20px); transition: opacity 0.2s; }
+
         #loadingOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.75); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
@@ -77,16 +80,9 @@
         .btn-cancel { background: #444; color: #fff; }
         .btn-cancel:active { transform: scale(0.95); background: #333; }
 
-        #instruction { display: none; position: absolute; bottom: 20px; left: 20px; color: #bbb; font-size: 0.95rem; pointer-events: none; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
-        #instruction table { border-collapse: collapse; }
-        #instruction td { padding: 3px 2px; vertical-align: middle; }
-        #instruction td:first-child { text-align: right; white-space: nowrap; }
-        #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
-        #instruction td:last-child { text-align: left; white-space: nowrap; }
-
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
         
-        #actionPanel { display: none; position: absolute; right: 20px; bottom: 195px; width: 140px; padding: 12px; gap: 10px; align-items: stretch; z-index: 10; }
+        #actionPanel { display: none; position: absolute; right: 20px; bottom: 205px; width: 140px; padding: 12px; gap: 10px; align-items: stretch; z-index: 10; }
         #sliderPanel { display: none; position: absolute; right: 20px; bottom: 20px; gap: 12px; z-index: 10; }
 
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
@@ -106,7 +102,9 @@
         .seg-btn:active { transform: scale(0.90); }
 
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
-        .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
+        /* 更新標籤樣式以適應加入快捷鍵說明 */
+        .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 75px; text-align: left; font-weight: bold; margin-right: 4px; flex-shrink: 0; line-height: 1.2; }
+        .shortcut { display: block; font-size: 0.65rem; color: #888; font-weight: normal; margin-top: 2px; }
         
         .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
         .step-btn:hover { background: rgba(255,255,255,0.25); }
@@ -133,9 +131,8 @@
             #topBar { top: 15px; right: 15px; }
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; }
-            #instruction { display: none !important; } 
             
-            #actionPanel { right: 15px; bottom: 185px; width: 130px; padding: 10px; } 
+            #actionPanel { right: 15px; bottom: 195px; width: 130px; padding: 10px; } 
             #sliderPanel { right: 15px; bottom: 20px; padding: 12px; }
             input[type=range] { width: 80px; }
         }
@@ -167,6 +164,11 @@
         <button class="cancel-ai-btn" onclick="cancelAI()">🛑 改手動標記</button>
     </div>
 
+    <!-- 新增游標跟隨越界提示框 -->
+    <div id="exceedWarning">
+        ⚠️ <span class="c-color">Cup</span> 已超出 <span class="d-color">Disc</span> 範圍
+    </div>
+
     <div id="logo">
         <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);" onerror="this.style.display='none'">
         <div class="logo-text-group">
@@ -191,15 +193,6 @@
     
     <div id="statusDashboard"></div>
     
-    <div id="instruction">
-        <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>同步</td></tr>
-            <tr><td><b>+Shift</b></td><td>:</td><td>圖片</td></tr>
-            <tr><td><b>+Ctrl</b></td><td>:</td><td>尺標</td></tr>
-            <tr><td><b>+Opt/Alt</b></td><td>:</td><td>對稱</td></tr>
-        </table>
-    </div>
-
     <div class="panel-box" id="actionPanel">
         <div class="action-item seg-group">
             <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
@@ -219,26 +212,38 @@
 
     <div class="panel-box" id="sliderPanel">
         <div class="ctrl-group">
-            <div class="ctrl-lbl"><span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span></div>
+            <div class="ctrl-lbl">
+                <span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span>
+                <span class="shortcut">對稱 🖱️+Alt</span>
+            </div>
             <button class="step-btn" onclick="stepCD(-1)">-</button>
             <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
             <button class="step-btn" onclick="stepCD(1)">+</button>
         </div>
         <div class="divider"></div>
         <div class="ctrl-group">
-            <div class="ctrl-lbl">圖片</div>
+            <div class="ctrl-lbl">
+                圖片
+                <span class="shortcut">🖱️+Shift</span>
+            </div>
             <button class="step-btn" onclick="stepZoom('Img', -0.2)">-</button>
             <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
             <button class="step-btn" onclick="stepZoom('Img', 0.2)">+</button>
         </div>
         <div class="ctrl-group">
-            <div class="ctrl-lbl">尺標</div>
+            <div class="ctrl-lbl">
+                尺標
+                <span class="shortcut">🖱️+Ctrl</span>
+            </div>
             <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
             <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
             <button class="step-btn" onclick="stepZoom('Mkr', 0.2)">+</button>
         </div>
         <div class="ctrl-group">
-            <div class="ctrl-lbl">同步</div>
+            <div class="ctrl-lbl">
+                同步
+                <span class="shortcut">🖱️</span>
+            </div>
             <button class="step-btn" onclick="stepZoom('All', -0.2)">-</button>
             <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
             <button class="step-btn" onclick="stepZoom('All', 0.2)">+</button>
@@ -253,8 +258,8 @@
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
         const statusDashboard = document.getElementById('statusDashboard');
+        const exceedWarning = document.getElementById('exceedWarning');
         const loadingOverlay = document.getElementById('loadingOverlay');
-        const instruction = document.getElementById('instruction');
         
         const sliderCD = document.getElementById('sliderCD');
         const sliderImg = document.getElementById('sliderImg');
@@ -356,7 +361,6 @@
 
             updateLogoModelName(); 
             closeSettings();
-            showTempAlert('✅ 系統設定已更新並儲存！');
         }
 
         function showTempAlert(msg, duration = 4000) {
@@ -388,8 +392,6 @@
                     
                     document.getElementById('actionPanel').style.display = 'flex';
                     document.getElementById('sliderPanel').style.display = 'flex';
-
-                    if (window.innerWidth > 600) instruction.style.display = 'block';
                     
                     showCup = false; showDisc = true; updateSegUI();
                     resetView();
@@ -474,7 +476,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (coords.disc && coords.cup) {
                     if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    showTempAlert('✨ AI 定位完成！ (' + displayModelName + ')');
+                    // 已移除「定位完成」文字提示，靜默完成
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
@@ -596,7 +598,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         function updateDashboard() {
             let isExceeding = false;
             
-            // 越界偵測：任何一端的 Cup 超過 Disc
             if (showCup && showDisc && pts.d_v1) {
                 let discTop = Math.min(pts.d_v1.y, pts.d_v2.y);
                 let discBot = Math.max(pts.d_v1.y, pts.d_v2.y);
@@ -612,6 +613,21 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 }
             }
 
+            // 更新游標跟隨的浮動警告框
+            if (isExceeding) {
+                exceedWarning.style.display = 'block';
+                let tx = lastMouse.x;
+                let ty = lastMouse.y;
+                
+                if (tx > window.innerWidth - 200) tx = window.innerWidth - 200;
+                if (ty > window.innerHeight - 50) ty = window.innerHeight - 50;
+                
+                exceedWarning.style.left = tx + 'px';
+                exceedWarning.style.top = ty + 'px';
+            } else {
+                exceedWarning.style.display = 'none';
+            }
+
             let html = "";
             let hasContent = false;
 
@@ -620,15 +636,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 hasContent = true;
             }
             
-            // 顯示 Cup 越界警告 (顏色對比設計)
-            if (isExceeding) {
-                html += `<div style="color: #fff; font-weight: bold; margin-top: ${hasContent ? '6px' : '0'}; text-shadow: 0 0 5px rgba(255,59,48,0.5);">⚠️ <span class="c-color">Cup</span> 已超出 <span class="d-color">Disc</span> 範圍</div>`;
-                hasContent = true;
-            }
-
-            // 顯示出血警告 (計算鐘點方位，動態跟隨 Disc 中心變化)
+            // 將 Hemorrhage 警告移至儀表板，並標示推算的鐘點方位
             if (aiFindings.hemorrhage) {
-                let clockHour = 11; // 預設值
+                let clockHour = 11; // 若沒給座標，預設為左上 (11 o'clock)
                 if (aiFindings.hemorrhage_x && aiFindings.hemorrhage_x > 0) {
                     let imgX = aiFindings.hemorrhage_x * img.width;
                     let imgY = aiFindings.hemorrhage_y * img.height;
@@ -653,7 +663,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (html !== "") {
                 statusDashboard.innerHTML = html;
-                statusDashboard.style.borderColor = isExceeding ? '#ff3b30' : (aiFindings.hemorrhage ? '#ffcc00' : (systemMessage ? '#4cd964' : '#888'));
+                statusDashboard.style.borderColor = aiFindings.hemorrhage ? '#ffcc00' : (systemMessage ? '#4cd964' : '#888');
                 statusDashboard.style.display = 'block';
             } else {
                 statusDashboard.style.display = 'none';
@@ -948,7 +958,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 
                 let textOffset = 28; 
 
-                // 只有在合理範圍內才顯示畫布上的區域薄化警告 (Out-of-bounds 時上方有 Dashboard 提示了)
+                // 在畫布上依然標示符合範圍內的區域薄化警告 (Out-of-bounds 時上方已有浮動提示)
                 if (pts.c_v1.y >= pts.d_v1.y && rimSup < notchThreshV) {
                     drawWarningTag(context, 'Thin', pts.d_v1.x, pts.d_v1.y - textOffset, 'center', 'bottom');
                 }
