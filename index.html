@@ -207,7 +207,8 @@
             <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
         </div>
         <div class="action-item">
-            <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI 定位</button>
+            <!-- 修正 1：改為 AI mode -->
+            <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
         </div>
         <div class="action-item">
             <button class="action-btn" onclick="resetView()">置中</button>
@@ -391,7 +392,6 @@
 
                     if (window.innerWidth > 600) instruction.style.display = 'block';
                     
-                    // 讓 resize 邏輯交給 draw 處理高 DPI
                     showCup = false; showDisc = true; updateSegUI();
                     resetView();
                     setAIMode(false);
@@ -594,9 +594,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function updateDashboard() {
+            // 修正 2：文字全白 (#fff)、邊框與背景中性灰 (#888) 提升質感
             if (systemMessage) {
-                statusDashboard.innerHTML = `<div style="color: #4cd964; font-weight: bold;">${systemMessage}</div>`;
-                statusDashboard.style.borderColor = '#4cd964';
+                statusDashboard.innerHTML = `<div style="color: #fff; font-weight: bold;">${systemMessage}</div>`;
+                statusDashboard.style.borderColor = '#888';
                 statusDashboard.style.display = 'block';
             } else {
                 statusDashboard.style.display = 'none';
@@ -787,7 +788,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             allZoom = val; draw();
         });
 
-        // 修改：讓膠囊獨立渲染，不再因為加入陰影而糊掉
         function drawWarningTag(ctx, text, x, y, align, baseline) {
             ctx.save();
             let fullText = "⚠️ " + text;
@@ -807,7 +807,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (baseline === 'middle') ry = y - h/2;
             else if (baseline === 'bottom') ry = y - h;
 
-            // 畫淡灰透明無邊線底框 (不加陰影保持乾淨)
             ctx.shadowColor = 'transparent';
             ctx.fillStyle = 'rgba(120, 120, 120, 0.5)'; 
             let r = 8; 
@@ -824,7 +823,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             ctx.closePath();
             ctx.fill();
             
-            // 畫文字 (加入輕微陰影增加對比)
             ctx.shadowColor = 'rgba(0,0,0,0.6)';
             ctx.shadowBlur = 3;
             ctx.shadowOffsetX = 1;
@@ -882,7 +880,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             context.fillStyle = 'rgba(255, 255, 255, 0.4)'; context.fill();
             context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
 
-            // 繪製警告文字
             if (showCup && showDisc) {
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
                 let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
@@ -917,29 +914,27 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     drawWarningTag(context, 'Thin', pts.d_h2.x + textOffset, pts.d_h2.y, 'left', 'middle');
                 }
 
-                // 修正 2：將出血標記錨定在視神經盤 2點鐘方向 的橢圓邊緣上
+                // 修正 3：重新調整出血標記位置至貼附邊緣，移除多餘偏圍
                 if (aiFindings.hemorrhage) {
                     let cx = (pts.d_h1.x + pts.d_h2.x) / 2;
                     let cy = (pts.d_v1.y + pts.d_v2.y) / 2;
                     let rx = Math.abs(pts.d_h2.x - pts.d_h1.x) / 2;
                     let ry = Math.abs(pts.d_v2.y - pts.d_v1.y) / 2;
                     
-                    // 利用三角函數 45度角 (0.75 為約略比例外推) 定位
-                    let hemX = cx + rx * 0.75;
-                    let hemY = cy - ry * 0.75;
+                    // 利用參數 0.65 把左下角定位點緊縮到橢圓實體輪廓內緣，避免文字框向右上方延展時超出太遠
+                    let hemX = cx + rx * 0.65;
+                    let hemY = cy - ry * 0.65;
                     
-                    drawWarningTag(context, 'Hemorrhage', hemX + 10, hemY - 10, 'left', 'bottom');
+                    drawWarningTag(context, 'Hemorrhage', hemX, hemY, 'left', 'bottom');
                 }
             }
         }
 
-        // 修正 1：全面導入 High-DPI 畫布縮放，解決文字與線條模糊問題
         function draw() {
             const dpr = window.devicePixelRatio || 1;
             let w = window.innerWidth;
             let h = window.innerHeight;
 
-            // 如果畫布的實體像素不符合螢幕 DPI，則重新設定
             if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
                 canvas.width = Math.floor(w * dpr);
                 canvas.height = Math.floor(h * dpr);
@@ -950,7 +945,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 後續所有的繪圖都根據螢幕的設備像素比放大，這樣 CSS pixel 座標系統就會保持完美對齊
             ctx.save();
             ctx.scale(dpr, dpr);
             
@@ -997,7 +991,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 ctx.restore();
             }
 
-            ctx.restore(); // 結束 DPR 縮放
+            ctx.restore(); 
         }
 
         function getHitTarget(tx, ty, isTouch) {
