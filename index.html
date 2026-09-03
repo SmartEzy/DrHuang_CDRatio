@@ -41,7 +41,7 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(136,136,136,0.35); border: 1px solid #888; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 85%; word-wrap: break-word; text-align: center; backdrop-filter: blur(8px); transition: border-color 0.3s; pointer-events: none; }
+        #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.75); border: 1px solid #888; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 85%; word-wrap: break-word; text-align: center; backdrop-filter: blur(8px); transition: border-color 0.3s; pointer-events: none; }
 
         #loadingOverlay {
             display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -278,7 +278,7 @@
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
-        let aiFindings = { hemorrhage: false };
+        let aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 };
         let abortController = null; 
 
         let systemMessage = "";
@@ -394,7 +394,7 @@
                     showCup = false; showDisc = true; updateSegUI();
                     resetView();
                     setAIMode(false);
-                    aiFindings = { hemorrhage: false };
+                    aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 };
                     updateDashboard();
                 }
                 img.src = event.target.result;
@@ -420,7 +420,7 @@
             document.querySelector('.loading-text').innerText = '⚡ 分析中... (' + displayModelName + ')';
             loadingOverlay.style.display = 'flex';
             setAIMode(true); 
-            aiFindings = { hemorrhage: false }; 
+            aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 }; 
 
             try {
                 const MAX_API_SIZE = 1024;
@@ -441,11 +441,12 @@ Locate the Optic Disc (OD) and Optic Cup (OC).
 - The Optic Cup (OC) is the inner depression. Pay special attention to "vessel kinking" or bayoneting at the cup margin to determine its precise boundary.
 Also, evaluate for signs of glaucoma:
 - "hemorrhage": true if there is a Drance hemorrhage (disc margin hemorrhage).
+- "hemorrhage_x", "hemorrhage_y": if hemorrhage is true, provide the precise normalized center coordinates (0.0 to 1.0) of the hemorrhage lesion on the image. If false, return 0.0.
 Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings using this exact schema:
 {
   "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
-  "findings": {"hemorrhage": false}
+  "findings": {"hemorrhage": false, "hemorrhage_x": 0.0, "hemorrhage_y": 0.0}
 }`;
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -593,9 +594,35 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function updateDashboard() {
+            // 越界偵測：若 Cup 大於 Disc，產生警示
+            let isExceeding = false;
+            if (showCup && showDisc && pts.d_v1) {
+                let discTop = Math.min(pts.d_v1.y, pts.d_v2.y);
+                let discBot = Math.max(pts.d_v1.y, pts.d_v2.y);
+                let cupTop = Math.min(pts.c_v1.y, pts.c_v2.y);
+                let cupBot = Math.max(pts.c_v1.y, pts.c_v2.y);
+                let discLeft = Math.min(pts.d_h1.x, pts.d_h2.x);
+                let discRight = Math.max(pts.d_h1.x, pts.d_h2.x);
+                let cupLeft = Math.min(pts.c_h1.x, pts.c_h2.x);
+                let cupRight = Math.max(pts.c_h1.x, pts.c_h2.x);
+
+                // 容許 2px 誤差避免太敏感
+                if (cupTop < discTop - 2 || cupBot > discBot + 2 || cupLeft < discLeft - 2 || cupRight > discRight + 2) {
+                    isExceeding = true;
+                }
+            }
+
+            let html = "";
             if (systemMessage) {
-                statusDashboard.innerHTML = `<div style="color: #fff; font-weight: bold;">${systemMessage}</div>`;
-                statusDashboard.style.borderColor = '#888';
+                html += `<div style="color: #fff; font-weight: bold;">${systemMessage}</div>`;
+            }
+            if (isExceeding) {
+                html += `<div style="color: #ff3b30; font-weight: bold; margin-top: ${systemMessage ? '6px' : '0'}; text-shadow: 0 0 5px rgba(255,59,48,0.5);">⚠️ 警告：Cup (綠) 已超出 Disc (紅) 範圍</div>`;
+            }
+
+            if (html !== "") {
+                statusDashboard.innerHTML = html;
+                statusDashboard.style.borderColor = isExceeding ? '#ff3b30' : (systemMessage ? '#4cd964' : '#888');
                 statusDashboard.style.display = 'block';
             } else {
                 statusDashboard.style.display = 'none';
@@ -890,39 +917,49 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 
                 let textOffset = 28; 
 
-                if (rimSup < notchThreshV) {
+                // 畫布上的標籤僅在 Cup 沒有超出該方向的 Disc 時顯示
+                if (pts.c_v1.y >= pts.d_v1.y && rimSup < notchThreshV) {
                     drawWarningTag(context, 'Thin', pts.d_v1.x, pts.d_v1.y - textOffset, 'center', 'bottom');
                 }
 
-                let infTexts = [];
-                if (rimInf < notchThreshV) infTexts.push('Thin');
-                if (rimInf < rimSup * 0.95) infTexts.push('I < S');
-                if (infTexts.length > 0) {
-                    let startY = pts.d_v2.y + textOffset;
-                    for (let i = 0; i < infTexts.length; i++) {
-                        drawWarningTag(context, infTexts[i], pts.d_v2.x, startY + (i * 30), 'center', 'top');
+                if (pts.c_v2.y <= pts.d_v2.y) {
+                    let infTexts = [];
+                    if (rimInf < notchThreshV) infTexts.push('Thin');
+                    if (rimInf < rimSup * 0.95) infTexts.push('I < S');
+                    if (infTexts.length > 0) {
+                        let startY = pts.d_v2.y + textOffset;
+                        for (let i = 0; i < infTexts.length; i++) {
+                            drawWarningTag(context, infTexts[i], pts.d_v2.x, startY + (i * 30), 'center', 'top');
+                        }
                     }
                 }
 
-                if (rimLeft < notchThreshH) {
+                if (pts.c_h1.x >= pts.d_h1.x && rimLeft < notchThreshH) {
                     drawWarningTag(context, 'Thin', pts.d_h1.x - textOffset, pts.d_h1.y, 'right', 'middle');
                 }
 
-                if (rimRight < notchThreshH) {
+                if (pts.c_h2.x <= pts.d_h2.x && rimRight < notchThreshH) {
                     drawWarningTag(context, 'Thin', pts.d_h2.x + textOffset, pts.d_h2.y, 'left', 'middle');
                 }
 
-                // 修正 1：將出血標記放置在 11 點鐘方向邊緣
                 if (aiFindings.hemorrhage) {
-                    let cx = (pts.d_h1.x + pts.d_h2.x) / 2;
-                    let cy = (pts.d_v1.y + pts.d_v2.y) / 2;
-                    let rx = Math.abs(pts.d_h2.x - pts.d_h1.x) / 2;
-                    let ry = Math.abs(pts.d_v2.y - pts.d_v1.y) / 2;
+                    let hScreenX, hScreenY;
                     
-                    let hemX = cx - rx * 0.5;
-                    let hemY = cy - ry * 0.85;
+                    if (aiFindings.hemorrhage_x && aiFindings.hemorrhage_x > 0) {
+                        let imgX = aiFindings.hemorrhage_x * img.width;
+                        let imgY = aiFindings.hemorrhage_y * img.height;
+                        hScreenX = transform.x + imgX * transform.scale;
+                        hScreenY = transform.y + imgY * transform.scale;
+                    } else {
+                        let cx = (pts.d_h1.x + pts.d_h2.x) / 2;
+                        let cy = (pts.d_v1.y + pts.d_v2.y) / 2;
+                        let rx = Math.abs(pts.d_h2.x - pts.d_h1.x) / 2;
+                        let ry = Math.abs(pts.d_v2.y - pts.d_v1.y) / 2;
+                        hScreenX = cx - rx * 0.6; 
+                        hScreenY = cy - ry * 0.85;
+                    }
                     
-                    drawWarningTag(context, 'Hemorrhage', hemX, hemY, 'right', 'bottom');
+                    drawWarningTag(context, 'Hemorrhage', hScreenX, hScreenY, 'center', 'bottom');
                 }
             }
         }
@@ -1066,48 +1103,20 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                     setAIMode(false); 
                 } else if (dragObj.type === 'point') {
-                    let nx = mouseX;
-                    let ny = mouseY;
+                    // 解除硬性鎖定，回歸自由拖曳
                     let k = dragObj.key;
+                    let dx = mouseX - dragObj.pt.x;
+                    let dy = mouseY - dragObj.pt.y;
 
-                    // 修正 2: 在拖曳時鎖定邊界範圍，綠色無法超過紅色，紅色無法小於綠色
-                    if (k === 'c_v1') ny = Math.max(pts.d_v1.y, Math.min(ny, pts.c_v2.y - 5));
-                    else if (k === 'c_v2') ny = Math.min(pts.d_v2.y, Math.max(ny, pts.c_v1.y + 5));
-                    else if (k === 'd_v1') ny = Math.min(ny, pts.c_v1.y);
-                    else if (k === 'd_v2') ny = Math.max(ny, pts.c_v2.y);
-                    else if (k === 'c_h1') nx = Math.max(pts.d_h1.x, Math.min(nx, pts.c_h2.x - 5));
-                    else if (k === 'c_h2') nx = Math.min(pts.d_h2.x, Math.max(nx, pts.c_h1.x + 5));
-                    else if (k === 'd_h1') nx = Math.min(nx, pts.c_h1.x);
-                    else if (k === 'd_h2') nx = Math.max(nx, pts.c_h2.x);
-
-                    let dx = nx - dragObj.pt.x;
-                    let dy = ny - dragObj.pt.y;
+                    dragObj.pt.x += dx;
+                    dragObj.pt.y += dy;
 
                     if (e.altKey) {
                         let oppKey = k.endsWith('1') ? k.slice(0, -1) + '2' : k.slice(0, -1) + '1';
-                        let oppNx = pts[oppKey].x - dx;
-                        let oppNy = pts[oppKey].y - dy;
-                        let oppValid = true;
-
-                        if (oppKey === 'c_v1' && oppNy < pts.d_v1.y) oppValid = false;
-                        if (oppKey === 'c_v2' && oppNy > pts.d_v2.y) oppValid = false;
-                        if (oppKey === 'd_v1' && oppNy > pts.c_v1.y) oppValid = false;
-                        if (oppKey === 'd_v2' && oppNy < pts.c_v2.y) oppValid = false;
-                        if (oppKey === 'c_h1' && oppNx < pts.d_h1.x) oppValid = false;
-                        if (oppKey === 'c_h2' && oppNx > pts.d_h2.x) oppValid = false;
-                        if (oppKey === 'd_h1' && oppNx > pts.c_h1.x) oppValid = false;
-                        if (oppKey === 'd_h2' && oppNx < pts.c_h2.x) oppValid = false;
-
-                        if (!oppValid) {
-                            dx = 0; dy = 0;
-                        } else {
-                            pts[oppKey].x -= dx;
-                            pts[oppKey].y -= dy;
-                        }
+                        pts[oppKey].x -= dx;
+                        pts[oppKey].y -= dy;
                     }
                     
-                    dragObj.pt.x += dx;
-                    dragObj.pt.y += dy;
                     setAIMode(false); 
                 } else if (dragObj.type === 'line') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
@@ -1156,48 +1165,20 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
-                        let nx = mouseX;
-                        let ny = mouseY;
+                        // 解除硬性鎖定，回歸自由拖曳
                         let k = dragObj.key;
+                        let dx = mouseX - dragObj.pt.x;
+                        let dy = mouseY - dragObj.pt.y;
 
-                        // 觸控版也要同步邊界鎖定
-                        if (k === 'c_v1') ny = Math.max(pts.d_v1.y, Math.min(ny, pts.c_v2.y - 5));
-                        else if (k === 'c_v2') ny = Math.min(pts.d_v2.y, Math.max(ny, pts.c_v1.y + 5));
-                        else if (k === 'd_v1') ny = Math.min(ny, pts.c_v1.y);
-                        else if (k === 'd_v2') ny = Math.max(ny, pts.c_v2.y);
-                        else if (k === 'c_h1') nx = Math.max(pts.d_h1.x, Math.min(nx, pts.c_h2.x - 5));
-                        else if (k === 'c_h2') nx = Math.min(pts.d_h2.x, Math.max(nx, pts.c_h1.x + 5));
-                        else if (k === 'd_h1') nx = Math.min(nx, pts.c_h1.x);
-                        else if (k === 'd_h2') nx = Math.max(nx, pts.c_h2.x);
-
-                        let dx = nx - dragObj.pt.x;
-                        let dy = ny - dragObj.pt.y;
+                        dragObj.pt.x += dx;
+                        dragObj.pt.y += dy;
 
                         if (e.altKey) {
                             let oppKey = k.endsWith('1') ? k.slice(0, -1) + '2' : k.slice(0, -1) + '1';
-                            let oppNx = pts[oppKey].x - dx;
-                            let oppNy = pts[oppKey].y - dy;
-                            let oppValid = true;
-
-                            if (oppKey === 'c_v1' && oppNy < pts.d_v1.y) oppValid = false;
-                            if (oppKey === 'c_v2' && oppNy > pts.d_v2.y) oppValid = false;
-                            if (oppKey === 'd_v1' && oppNy > pts.c_v1.y) oppValid = false;
-                            if (oppKey === 'd_v2' && oppNy < pts.c_v2.y) oppValid = false;
-                            if (oppKey === 'c_h1' && oppNx < pts.d_h1.x) oppValid = false;
-                            if (oppKey === 'c_h2' && oppNx > pts.d_h2.x) oppValid = false;
-                            if (oppKey === 'd_h1' && oppNx > pts.c_h1.x) oppValid = false;
-                            if (oppKey === 'd_h2' && oppNx < pts.c_h2.x) oppValid = false;
-
-                            if (!oppValid) {
-                                dx = 0; dy = 0;
-                            } else {
-                                pts[oppKey].x -= dx;
-                                pts[oppKey].y -= dy;
-                            }
+                            pts[oppKey].x -= dx;
+                            pts[oppKey].y -= dy;
                         }
                         
-                        dragObj.pt.x += dx;
-                        dragObj.pt.y += dy;
                         setAIMode(false); 
                     } else if (dragObj.type === 'line') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
