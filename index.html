@@ -79,12 +79,13 @@
         .btn-cancel { background: #444; color: #fff; }
         .btn-cancel:active { transform: scale(0.95); background: #333; }
 
-        /* 修正 3：重新將按鈕與滑桿包裝進 flex 容器，解決重疊問題，且不干涉游標點擊 */
+        /* 恢復重疊修正的父容器排版 */
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; pointer-events: none; }
+        
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
         
         #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
-        #sliderPanel { gap: 12px; }
+        #sliderPanel { gap: 12px; display: flex; flex-direction: column; }
 
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
@@ -103,10 +104,9 @@
         .seg-btn:active { transform: scale(0.90); }
 
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
-        
-        /* 修正 2：將文字寬度縮小，縮減空白。並允許子元素垂直排列 */
-        .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 58px; text-align: left; font-weight: bold; margin-right: 4px; flex-shrink: 0; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; }
-        .shortcut { font-size: 0.65rem; color: #999; font-weight: normal; margin-top: 3px; white-space: nowrap; transform: scale(0.9); transform-origin: left; }
+        /* 縮短 width，讓負號跟文字貼近，並強制兩行排版 */
+        .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 62px; text-align: left; font-weight: bold; margin-right: 4px; flex-shrink: 0; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; }
+        .shortcut { font-size: 0.7rem; color: #999; font-weight: normal; margin-top: 2px; letter-spacing: 0.5px; }
         
         .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
         .step-btn:hover { background: rgba(255,255,255,0.25); }
@@ -195,6 +195,7 @@
     
     <div id="statusDashboard"></div>
 
+    <!-- 將按鈕與滑桿包裝在同一個 Flex 容器中避免重疊 -->
     <div id="rightControls">
         <div class="panel-box" id="actionPanel">
             <div class="action-item seg-group">
@@ -216,7 +217,7 @@
         <div class="panel-box" id="sliderPanel">
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
-                    <span><span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span></span>
+                    <div><span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span></div>
                 </div>
                 <button class="step-btn" onclick="stepCD(-1)">-</button>
                 <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
@@ -225,8 +226,8 @@
             <div class="divider"></div>
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
-                    <span>圖片</span>
-                    <span class="shortcut">🖱️+Shift</span>
+                    <div>圖片</div>
+                    <div class="shortcut">🖱️+Shift</div>
                 </div>
                 <button class="step-btn" onclick="stepZoom('Img', -0.2)">-</button>
                 <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
@@ -234,8 +235,8 @@
             </div>
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
-                    <span>尺標</span>
-                    <span class="shortcut">🖱️+Ctrl</span>
+                    <div>尺標</div>
+                    <div class="shortcut">🖱️+Ctrl</div>
                 </div>
                 <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
                 <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
@@ -243,13 +244,16 @@
             </div>
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
-                    <span>同步</span>
-                    <span class="shortcut">🖱️</span>
-                    <span class="shortcut">對稱 🖱️+Alt</span>
+                    <div>同步</div>
+                    <div class="shortcut">🖱️</div>
                 </div>
                 <button class="step-btn" onclick="stepZoom('All', -0.2)">-</button>
                 <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
                 <button class="step-btn" onclick="stepZoom('All', 0.2)">+</button>
+            </div>
+            <!-- 對稱快捷鍵獨立於同步列下方右側 -->
+            <div style="text-align: right; color: #999; font-size: 0.7rem; margin-top: -6px; padding-right: 2px;">
+                對稱 🖱️+Alt
             </div>
         </div>
     </div>
@@ -262,9 +266,9 @@
         const canvas = document.getElementById('canvas');
         const infoBar = document.getElementById('infoBar');
         const statusDashboard = document.getElementById('statusDashboard');
-        const rightControls = document.getElementById('rightControls');
         const exceedWarning = document.getElementById('exceedWarning');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const rightControls = document.getElementById('rightControls');
         
         const sliderCD = document.getElementById('sliderCD');
         const sliderImg = document.getElementById('sliderImg');
@@ -395,6 +399,7 @@
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
                     
+                    // 顯示整個右側控制容器
                     rightControls.style.display = 'flex';
                     
                     showCup = false; showDisc = true; updateSegUI();
@@ -480,7 +485,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (coords.disc && coords.cup) {
                     if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    // 修正 1：移除多餘的 AI 定位完成文字，達到靜默定位
+                    // 靜默完成，移除了 showTempAlert 文字提示
                     systemMessage = "";
                     updateDashboard();
                 } else {
@@ -621,7 +626,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (isExceeding) {
                 exceedWarning.style.display = 'block';
-                let tx = lastMouse.x + 25; // 保持距離不擋住
+                let tx = lastMouse.x + 25; 
                 let ty = lastMouse.y + 25;
                 
                 if (tx > window.innerWidth - 200) tx = window.innerWidth - 200;
