@@ -207,7 +207,6 @@
             <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
         </div>
         <div class="action-item">
-            <!-- 修正 1：改為 AI mode -->
             <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
         </div>
         <div class="action-item">
@@ -594,7 +593,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function updateDashboard() {
-            // 修正 2：文字全白 (#fff)、邊框與背景中性灰 (#888) 提升質感
             if (systemMessage) {
                 statusDashboard.innerHTML = `<div style="color: #fff; font-weight: bold;">${systemMessage}</div>`;
                 statusDashboard.style.borderColor = '#888';
@@ -914,18 +912,17 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     drawWarningTag(context, 'Thin', pts.d_h2.x + textOffset, pts.d_h2.y, 'left', 'middle');
                 }
 
-                // 修正 3：重新調整出血標記位置至貼附邊緣，移除多餘偏圍
+                // 修正 1：將出血標記放置在 11 點鐘方向邊緣
                 if (aiFindings.hemorrhage) {
                     let cx = (pts.d_h1.x + pts.d_h2.x) / 2;
                     let cy = (pts.d_v1.y + pts.d_v2.y) / 2;
                     let rx = Math.abs(pts.d_h2.x - pts.d_h1.x) / 2;
                     let ry = Math.abs(pts.d_v2.y - pts.d_v1.y) / 2;
                     
-                    // 利用參數 0.65 把左下角定位點緊縮到橢圓實體輪廓內緣，避免文字框向右上方延展時超出太遠
-                    let hemX = cx + rx * 0.65;
-                    let hemY = cy - ry * 0.65;
+                    let hemX = cx - rx * 0.5;
+                    let hemY = cy - ry * 0.85;
                     
-                    drawWarningTag(context, 'Hemorrhage', hemX, hemY, 'left', 'bottom');
+                    drawWarningTag(context, 'Hemorrhage', hemX, hemY, 'right', 'bottom');
                 }
             }
         }
@@ -1069,12 +1066,48 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                     setAIMode(false); 
                 } else if (dragObj.type === 'point') {
-                    let dx = mouseX - dragObj.pt.x, dy = mouseY - dragObj.pt.y;
-                    dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                    let nx = mouseX;
+                    let ny = mouseY;
+                    let k = dragObj.key;
+
+                    // 修正 2: 在拖曳時鎖定邊界範圍，綠色無法超過紅色，紅色無法小於綠色
+                    if (k === 'c_v1') ny = Math.max(pts.d_v1.y, Math.min(ny, pts.c_v2.y - 5));
+                    else if (k === 'c_v2') ny = Math.min(pts.d_v2.y, Math.max(ny, pts.c_v1.y + 5));
+                    else if (k === 'd_v1') ny = Math.min(ny, pts.c_v1.y);
+                    else if (k === 'd_v2') ny = Math.max(ny, pts.c_v2.y);
+                    else if (k === 'c_h1') nx = Math.max(pts.d_h1.x, Math.min(nx, pts.c_h2.x - 5));
+                    else if (k === 'c_h2') nx = Math.min(pts.d_h2.x, Math.max(nx, pts.c_h1.x + 5));
+                    else if (k === 'd_h1') nx = Math.min(nx, pts.c_h1.x);
+                    else if (k === 'd_h2') nx = Math.max(nx, pts.c_h2.x);
+
+                    let dx = nx - dragObj.pt.x;
+                    let dy = ny - dragObj.pt.y;
+
                     if (e.altKey) {
-                        let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
-                        if (pts[oppKey]) { pts[oppKey].x -= dx; pts[oppKey].y -= dy; }
+                        let oppKey = k.endsWith('1') ? k.slice(0, -1) + '2' : k.slice(0, -1) + '1';
+                        let oppNx = pts[oppKey].x - dx;
+                        let oppNy = pts[oppKey].y - dy;
+                        let oppValid = true;
+
+                        if (oppKey === 'c_v1' && oppNy < pts.d_v1.y) oppValid = false;
+                        if (oppKey === 'c_v2' && oppNy > pts.d_v2.y) oppValid = false;
+                        if (oppKey === 'd_v1' && oppNy > pts.c_v1.y) oppValid = false;
+                        if (oppKey === 'd_v2' && oppNy < pts.c_v2.y) oppValid = false;
+                        if (oppKey === 'c_h1' && oppNx < pts.d_h1.x) oppValid = false;
+                        if (oppKey === 'c_h2' && oppNx > pts.d_h2.x) oppValid = false;
+                        if (oppKey === 'd_h1' && oppNx > pts.c_h1.x) oppValid = false;
+                        if (oppKey === 'd_h2' && oppNx < pts.c_h2.x) oppValid = false;
+
+                        if (!oppValid) {
+                            dx = 0; dy = 0;
+                        } else {
+                            pts[oppKey].x -= dx;
+                            pts[oppKey].y -= dy;
+                        }
                     }
+                    
+                    dragObj.pt.x += dx;
+                    dragObj.pt.y += dy;
                     setAIMode(false); 
                 } else if (dragObj.type === 'line') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
@@ -1123,12 +1156,48 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
-                        let dx = mouseX - dragObj.pt.x, dy = mouseY - dragObj.pt.y;
-                        dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
+                        let nx = mouseX;
+                        let ny = mouseY;
+                        let k = dragObj.key;
+
+                        // 觸控版也要同步邊界鎖定
+                        if (k === 'c_v1') ny = Math.max(pts.d_v1.y, Math.min(ny, pts.c_v2.y - 5));
+                        else if (k === 'c_v2') ny = Math.min(pts.d_v2.y, Math.max(ny, pts.c_v1.y + 5));
+                        else if (k === 'd_v1') ny = Math.min(ny, pts.c_v1.y);
+                        else if (k === 'd_v2') ny = Math.max(ny, pts.c_v2.y);
+                        else if (k === 'c_h1') nx = Math.max(pts.d_h1.x, Math.min(nx, pts.c_h2.x - 5));
+                        else if (k === 'c_h2') nx = Math.min(pts.d_h2.x, Math.max(nx, pts.c_h1.x + 5));
+                        else if (k === 'd_h1') nx = Math.min(nx, pts.c_h1.x);
+                        else if (k === 'd_h2') nx = Math.max(nx, pts.c_h2.x);
+
+                        let dx = nx - dragObj.pt.x;
+                        let dy = ny - dragObj.pt.y;
+
                         if (e.altKey) {
-                            let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
-                            if (pts[oppKey]) { pts[oppKey].x -= dx; pts[oppKey].y -= dy; }
+                            let oppKey = k.endsWith('1') ? k.slice(0, -1) + '2' : k.slice(0, -1) + '1';
+                            let oppNx = pts[oppKey].x - dx;
+                            let oppNy = pts[oppKey].y - dy;
+                            let oppValid = true;
+
+                            if (oppKey === 'c_v1' && oppNy < pts.d_v1.y) oppValid = false;
+                            if (oppKey === 'c_v2' && oppNy > pts.d_v2.y) oppValid = false;
+                            if (oppKey === 'd_v1' && oppNy > pts.c_v1.y) oppValid = false;
+                            if (oppKey === 'd_v2' && oppNy < pts.c_v2.y) oppValid = false;
+                            if (oppKey === 'c_h1' && oppNx < pts.d_h1.x) oppValid = false;
+                            if (oppKey === 'c_h2' && oppNx > pts.d_h2.x) oppValid = false;
+                            if (oppKey === 'd_h1' && oppNx > pts.c_h1.x) oppValid = false;
+                            if (oppKey === 'd_h2' && oppNx < pts.c_h2.x) oppValid = false;
+
+                            if (!oppValid) {
+                                dx = 0; dy = 0;
+                            } else {
+                                pts[oppKey].x -= dx;
+                                pts[oppKey].y -= dy;
+                            }
                         }
+                        
+                        dragObj.pt.x += dx;
+                        dragObj.pt.y += dy;
                         setAIMode(false); 
                     } else if (dragObj.type === 'line') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
