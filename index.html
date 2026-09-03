@@ -22,10 +22,7 @@
         #logo { position: absolute; top: 20px; left: 30px; z-index: 20; user-select: none; pointer-events: none; display: flex; align-items: center; }
         .logo-text-group { margin-left: 12px; display: flex; flex-direction: column; }
         #logoText { font-weight: bold; font-size: 1.6rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
-        
-        /* 動態標籤樣式 */
-        #logoSubText { font-size: 0.75rem; margin-top: 4px; padding: 2px 8px; border-radius: 6px; display: inline-block; width: fit-content; transition: 0.3s; letter-spacing: 0.5px; }
-        
+        #logoSubText { font-size: 0.75rem; color: #888; margin-top: 2px; letter-spacing: 0.5px; }
         .c-color { color: #4cd964; } 
         .d-color { color: #ff3b30; } 
         
@@ -42,27 +39,35 @@
         .label { font-size: 0.9rem; color: #aaa; margin-left: 10px; }
         .label:first-child { margin-left: 0; }
         
-        #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.9); border: 1px solid #4cd964; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 95%; white-space: nowrap; text-align: center; backdrop-filter: blur(5px); transition: border-color 0.3s; pointer-events: none; }
+        /* 修正3：將背景框改成和 AI 型號字體相同的灰色 (#888)，並設定半透明模糊 */
+        #statusDashboard { display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(136,136,136,0.35); border: 1px solid #888; padding: 10px 20px; border-radius: 16px; font-size: 0.95rem; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 85%; word-wrap: break-word; text-align: center; backdrop-filter: blur(8px); transition: border-color 0.3s; pointer-events: none; }
 
-        #loadingOverlay { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        #loadingOverlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.75); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+        }
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { color: #fff; font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 30px; text-align: center; }
         .cancel-ai-btn { background: #333; color: #ff8a80; border: 1px solid #ff3b30; padding: 10px 25px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s; }
         .cancel-ai-btn:active { transform: scale(0.95); background: #ff3b30; color: #fff; }
 
-        #settingsModalOverlay { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .settings-modal { background: #222; padding: 25px; border-radius: 18px; width: 85%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid #444; display: flex; flex-direction: column; }
+        #settingsModalOverlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .settings-modal {
+            background: #222; padding: 25px; border-radius: 18px; width: 85%; max-width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid #444; display: flex; flex-direction: column;
+        }
         .settings-modal h3 { margin: 0 0 20px 0; font-size: 1.3rem; color: #fff; text-align: center; }
         .settings-modal label { font-size: 0.9rem; color: #bbb; margin-bottom: 6px; font-weight: bold; }
-        .settings-modal input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #111; color: #fff; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; }
+        .settings-modal input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #111; color: #fff; box-sizing: border-box; font-size: 1rem; margin-bottom: 6px; }
         .settings-modal input:focus { outline: none; border-color: #4a90e2; }
         
-        /* 實體記憶膠囊的 CSS */
-        .history-capsules { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-        .history-capsule { background: rgba(255,255,255,0.1); color: #ccc; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; border: 1px solid transparent; white-space: nowrap; }
-        .history-capsule:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: #4a90e2; }
-        .history-capsule:active { transform: scale(0.95); }
+        #historyTags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+        .history-tag { background: rgba(74, 144, 226, 0.15); color: #6ab0ff; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; border: 1px solid rgba(74, 144, 226, 0.4); transition: 0.2s; white-space: nowrap; }
+        .history-tag:hover { background: rgba(74, 144, 226, 0.35); color: #fff; border-color: #4a90e2; }
 
         .settings-btn-group { display: flex; gap: 12px; margin-top: 5px; }
         .settings-btn-group button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; transition: 0.1s; }
@@ -76,19 +81,24 @@
         #instruction td { padding: 3px 2px; vertical-align: middle; }
         #instruction td:first-child { text-align: right; white-space: nowrap; }
         #instruction td:nth-child(2) { font-weight: bold; text-align: center; padding: 0 6px; }
-        #instruction td:last-child { text-align: left; white-space: nowrap; letter-spacing: 1px; }
+        #instruction td:last-child { text-align: left; white-space: nowrap; }
 
-        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; }
-        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; }
+        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
         
-        #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
+        /* 修正1：將按鈕區和滑桿區徹底分開絕對定位，消滅隱形外框遮擋問題 */
+        #actionPanel { display: none; position: absolute; right: 20px; bottom: 195px; width: 140px; padding: 12px; gap: 10px; align-items: stretch; z-index: 10; }
+        #sliderPanel { display: none; position: absolute; right: 20px; bottom: 20px; gap: 12px; z-index: 10; }
+
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
-        .action-btn { background: #333; color: #fff; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.2s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; border: 1px solid #555; }
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
         
-        .action-btn-ai { background: linear-gradient(135deg, #1e3c72, #2a5298); border: 1px solid transparent; }
-        
+        /* 修正2：AI按鈕預設暗化 (rgba 0.45)，加入 .ai-active 時變亮白 */
+        .action-btn-ai { background: linear-gradient(135deg, #1e3c72, #2a5298); border: 1px solid #4a90e2; color: rgba(255, 255, 255, 0.45); transition: color 0.3s; }
+        .action-btn-ai.ai-active { color: #fff; font-weight: bold; text-shadow: 0 0 5px rgba(255,255,255,0.4); box-shadow: 0 0 8px rgba(74, 144, 226, 0.4); }
+        .action-btn-ai:active { background: #1e3c72; }
+
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
         .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
         .seg-btn:last-child { border-right: none; }
@@ -96,7 +106,6 @@
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
         .seg-btn:active { transform: scale(0.90); }
 
-        #sliderPanel { gap: 12px; }
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
         .ctrl-group span { color: #ddd; font-size: 0.95rem; width: 35px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; }
         
@@ -121,14 +130,14 @@
             #logo img { height: 28px !important; }
             .logo-text-group { margin-left: 8px; }
             #logoText { font-size: 1.1rem; }
-            #logoSubText { font-size: 0.65rem; margin-top: 2px; padding: 2px 6px; }
+            #logoSubText { font-size: 0.65rem; }
             #topBar { top: 15px; right: 15px; }
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
-            #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; max-width: 98%; }
+            #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; }
             #instruction { display: none !important; } 
-            #rightControls { right: 15px; bottom: 20px; gap: 10px; }
-            .panel-box { padding: 12px; border-radius: 12px; }
-            #actionPanel { width: 130px; padding: 10px; } 
+            
+            #actionPanel { right: 15px; bottom: 185px; width: 130px; padding: 10px; } 
+            #sliderPanel { right: 15px; bottom: 20px; padding: 12px; }
             input[type=range] { width: 80px; }
         }
     </style>
@@ -139,12 +148,12 @@
         <div class="settings-modal">
             <h3>系統設定</h3>
             <label for="modelInput">AI 模型名稱</label>
-            <input type="text" id="modelInput" placeholder="例如: gemini-3.5-flash" style="margin-bottom: 8px;">
-            <!-- 實體化記憶清單膠囊容器 -->
-            <div id="modelHistory" class="history-capsules"></div>
+            <input type="text" id="modelInput" placeholder="例如: gemini-1.5-flash">
+            
+            <div id="historyTags"></div>
             
             <label for="apiKeyInput">Google API Key</label>
-            <input type="password" id="apiKeyInput" placeholder="請貼上您的 API 金鑰">
+            <input type="password" id="apiKeyInput" placeholder="請貼上您的 API 金鑰" style="margin-bottom: 15px;">
             
             <div class="settings-btn-group">
                 <button class="btn-cancel" onclick="closeSettings()">取消</button>
@@ -160,7 +169,7 @@
     </div>
 
     <div id="logo">
-        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
+        <img src="logo.png" alt="Logo" style="height: 40px; border-radius: 6px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);" onerror="this.style.display='none'">
         <div class="logo-text-group">
             <span id="logoText"><span class="c-color">C</span>/<span class="d-color">D</span> Ratio</span>
             <span id="logoSubText"></span>
@@ -185,57 +194,55 @@
     
     <div id="instruction">
         <table>
-            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td><div class="txt-justify"><span>全</span><span>部</span></div></td></tr>
-            <tr><td><b>+Shift</b></td><td>:</td><td><div class="txt-justify"><span>圖</span><span>片</span></div></td></tr>
-            <tr><td><b>+Ctrl</b></td><td>:</td><td><div class="txt-justify"><span>尺</span><span>標</span></div></td></tr>
-            <tr><td><b>+Opt/Alt</b></td><td>:</td><td><div class="txt-justify"><span>對</span><span>稱</span></div></td></tr>
+            <tr><td><b>滑鼠/滾輪</b></td><td>:</td><td>同步</td></tr>
+            <tr><td><b>+Shift</b></td><td>:</td><td>圖片</td></tr>
+            <tr><td><b>+Ctrl</b></td><td>:</td><td>尺標</td></tr>
+            <tr><td><b>+Opt/Alt</b></td><td>:</td><td>對稱</td></tr>
         </table>
     </div>
 
-    <div id="rightControls">
-        <div class="panel-box" id="actionPanel">
-            <div class="action-item seg-group">
-                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
-                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')">Disc</button>
-                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
-            </div>
-            <div class="action-item">
-                <button class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
-            </div>
-            <div class="action-item">
-                <button class="action-btn" onclick="resetView()">置中</button>
-            </div>
-            <div class="action-item">
-                <button class="action-btn" onclick="document.getElementById('fileInput').click()">換圖</button>
-            </div>
+    <div class="panel-box" id="actionPanel">
+        <div class="action-item seg-group">
+            <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
+            <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')">Disc</button>
+            <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
         </div>
+        <div class="action-item">
+            <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI 定位</button>
+        </div>
+        <div class="action-item">
+            <button class="action-btn" onclick="resetView()">置中</button>
+        </div>
+        <div class="action-item">
+            <button class="action-btn" onclick="document.getElementById('fileInput').click()">換圖</button>
+        </div>
+    </div>
 
-        <div class="panel-box" id="sliderPanel">
-            <div class="ctrl-group">
-                <span>C/D</span>
-                <button class="step-btn" onclick="stepCD(-1)">-</button>
-                <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
-                <button class="step-btn" onclick="stepCD(1)">+</button>
-            </div>
-            <div class="divider"></div>
-            <div class="ctrl-group">
-                <span>圖片</span>
-                <button class="step-btn" onclick="stepZoom('Img', -0.2)">-</button>
-                <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="5.0">
-                <button class="step-btn" onclick="stepZoom('Img', 0.2)">+</button>
-            </div>
-            <div class="ctrl-group">
-                <span>尺標</span>
-                <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
-                <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
-                <button class="step-btn" onclick="stepZoom('Mkr', 0.2)">+</button>
-            </div>
-            <div class="ctrl-group">
-                <span>同步</span>
-                <button class="step-btn" onclick="stepZoom('All', -0.2)">-</button>
-                <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
-                <button class="step-btn" onclick="stepZoom('All', 0.2)">+</button>
-            </div>
+    <div class="panel-box" id="sliderPanel">
+        <div class="ctrl-group">
+            <span>C/D</span>
+            <button class="step-btn" onclick="stepCD(-1)">-</button>
+            <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="setCDRatio(this.value)">
+            <button class="step-btn" onclick="stepCD(1)">+</button>
+        </div>
+        <div class="divider"></div>
+        <div class="ctrl-group">
+            <span>圖片</span>
+            <button class="step-btn" onclick="stepZoom('Img', -0.2)">-</button>
+            <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
+            <button class="step-btn" onclick="stepZoom('Img', 0.2)">+</button>
+        </div>
+        <div class="ctrl-group">
+            <span>尺標</span>
+            <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
+            <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
+            <button class="step-btn" onclick="stepZoom('Mkr', 0.2)">+</button>
+        </div>
+        <div class="ctrl-group">
+            <span>同步</span>
+            <button class="step-btn" onclick="stepZoom('All', -0.2)">-</button>
+            <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
+            <button class="step-btn" onclick="stepZoom('All', 0.2)">+</button>
         </div>
     </div>
 
@@ -249,12 +256,12 @@
         const statusDashboard = document.getElementById('statusDashboard');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const instruction = document.getElementById('instruction');
-        const rightControls = document.getElementById('rightControls');
         
         const sliderCD = document.getElementById('sliderCD');
         const sliderImg = document.getElementById('sliderImg');
         const sliderMkr = document.getElementById('sliderMkr');
         const sliderAll = document.getElementById('sliderAll');
+        const btnAI = document.getElementById('btnAI');
 
         const ctx = canvas.getContext('2d');
         let img = new Image();
@@ -266,44 +273,32 @@
         let pts = {};
         let transform = { scale: 1, x: 0, y: 0 };
         
-        let imgZoom = 5.0, mkrZoom = 1.0, allZoom = 1.0;
+        let imgZoom = 1.0, mkrZoom = 1.0, allZoom = 1.0;
+        
         let dragObj = null; let isDraggingCanvas = false; let lastMouse = {x: 0, y: 0}; let lastTouchDist = 0;
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
         let showCup = false; let showDisc = true;  
         
-        let isAiMode = false;
-        let aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
+        let aiFindings = { hemorrhage: false };
         let abortController = null; 
 
         let systemMessage = "";
         let systemMessageTimeout = null;
 
+        // 切換 AI / 手動模式 UI 反饋
+        function setAIMode(active) {
+            if (active) {
+                btnAI.classList.add('ai-active');
+            } else {
+                btnAI.classList.remove('ai-active');
+            }
+        }
+
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
-        function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-3.5-flash'; }
+        function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-1.5-flash'; }
 
         function updateLogoModelName() {
-            const sub = document.getElementById('logoSubText');
-            const aiBtn = document.querySelector('.action-btn-ai');
-            const modelName = getSavedModelName();
-            const displayName = modelName.replace(/-/g, ' '); 
-            
-            sub.innerText = displayName; 
-            
-            if (isAiMode) {
-                sub.style.color = "#fff"; 
-                sub.style.background = "rgba(255, 255, 255, 0.15)";
-                sub.style.fontWeight = "bold";
-                
-                aiBtn.style.border = "1px solid #4a90e2";
-                aiBtn.style.boxShadow = "0 0 10px rgba(74, 144, 226, 0.6)";
-            } else {
-                sub.style.color = "rgba(255, 255, 255, 0.4)";
-                sub.style.background = "transparent"; 
-                sub.style.fontWeight = "normal";
-                
-                aiBtn.style.border = "1px solid transparent";
-                aiBtn.style.boxShadow = "none";
-            }
+            document.getElementById('logoSubText').innerText = getSavedModelName();
         }
         updateLogoModelName(); 
 
@@ -311,19 +306,22 @@
             document.getElementById('apiKeyInput').value = getSavedApiKey();
             document.getElementById('modelInput').value = getSavedModelName();
 
-            // 渲染實體記憶膠囊
-            let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
-            let historyContainer = document.getElementById('modelHistory');
-            historyContainer.innerHTML = '';
-            
+            let history;
+            try {
+                history = JSON.parse(localStorage.getItem('cdratio_model_history'));
+                if (!Array.isArray(history)) throw new Error("Invalid format");
+            } catch(e) {
+                history = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
+            }
+
+            let tagsContainer = document.getElementById('historyTags');
+            tagsContainer.innerHTML = '';
             history.forEach(model => {
-                let cap = document.createElement('div');
-                cap.className = 'history-capsule';
-                cap.innerText = model;
-                cap.onclick = () => {
-                    document.getElementById('modelInput').value = model;
-                };
-                historyContainer.appendChild(cap);
+                let span = document.createElement('span');
+                span.className = 'history-tag';
+                span.innerText = model;
+                span.onclick = () => { document.getElementById('modelInput').value = model; };
+                tagsContainer.appendChild(span);
             });
 
             document.getElementById('settingsModalOverlay').style.display = 'flex';
@@ -340,11 +338,19 @@
             if(key) localStorage.setItem('cdratio_gemini_api_key', key);
             if(model) {
                 localStorage.setItem('cdratio_gemini_model', model);
-                let history = JSON.parse(localStorage.getItem('cdratio_model_history') || '["gemini-3.5-flash", "gemini-3.1-pro-preview"]');
-                // 移至陣列開頭並去重複
+                
+                let history;
+                try {
+                    history = JSON.parse(localStorage.getItem('cdratio_model_history'));
+                    if (!Array.isArray(history)) throw new Error("Invalid format");
+                } catch(e) {
+                    history = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
+                }
+                
                 history = history.filter(m => m !== model);
                 history.unshift(model);
-                if (history.length > 5) history.pop();
+                if (history.length > 5) history.length = 5;
+                
                 localStorage.setItem('cdratio_model_history', JSON.stringify(history));
             }
 
@@ -379,17 +385,18 @@
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
-                    rightControls.style.display = 'flex';
+                    
+                    document.getElementById('actionPanel').style.display = 'flex';
+                    document.getElementById('sliderPanel').style.display = 'flex';
+
                     if (window.innerWidth > 600) instruction.style.display = 'block';
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     
                     showCup = false; showDisc = true; updateSegUI();
-                    aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } };
-                    
-                    isAiMode = false;
                     resetView();
-                    updateLogoModelName();
+                    setAIMode(false); // 初始載入為手動
+                    aiFindings = { hemorrhage: false };
                     updateDashboard();
                 }
                 img.src = event.target.result;
@@ -414,7 +421,8 @@
             
             document.querySelector('.loading-text').innerText = '⚡ 分析中... (' + displayModelName + ')';
             loadingOverlay.style.display = 'flex';
-            aiFindings = { hemorrhage: { present: false, x: 0, y: 0 } }; 
+            setAIMode(true); // 開始分析，按鈕亮起
+            aiFindings = { hemorrhage: false }; 
 
             try {
                 const MAX_API_SIZE = 1024;
@@ -431,17 +439,15 @@
                 const promptText = `
 You are an expert ophthalmologist AI. Analyze this fundus photograph.
 Locate the Optic Disc (OD) and Optic Cup (OC).
-- The Optic Disc (OD) is the inner margin of the scleral ring. CAUTION: Explicitly EXCLUDE any Peripapillary Atrophy (PPA), pale crescents, or halos. The true disc border is the inner margin of the scleral ring.
+- The Optic Disc (OD) is the outer boundary.
 - The Optic Cup (OC) is the inner depression. Pay special attention to "vessel kinking" or bayoneting at the cup margin to determine its precise boundary.
 Also, evaluate for signs of glaucoma:
-- "hemorrhage": If there is a Drance hemorrhage (disc margin hemorrhage), set "present" to true, and provide its normalized "x" and "y" coordinates.
-Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exact schema:
+- "hemorrhage": true if there is a Drance hemorrhage (disc margin hemorrhage).
+Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings using this exact schema:
 {
   "disc": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
   "cup": {"ymin": 0.0, "xmin": 0.0, "ymax": 0.0, "xmax": 0.0},
-  "findings": {
-    "hemorrhage": {"present": false, "x": 0.0, "y": 0.0}
-  }
+  "findings": {"hemorrhage": false}
 }`;
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -463,35 +469,25 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 const data = await response.json();
                 let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!rawText) throw new Error('AI 回傳為空');
-                
-                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
                 const coords = JSON.parse(rawText);
 
                 if (coords.disc && coords.cup) {
-                    if (coords.findings && coords.findings.hemorrhage) {
-                        if (typeof coords.findings.hemorrhage === 'boolean') {
-                            aiFindings.hemorrhage = { present: coords.findings.hemorrhage, x: 0, y: 0 };
-                        } else {
-                            aiFindings.hemorrhage = coords.findings.hemorrhage;
-                        }
-                    }
-                    
-                    isAiMode = true; 
-                    updateLogoModelName();
-                    
+                    if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    showTempAlert('✨ AI 定位完成！');
+                    showTempAlert('✨ AI 定位完成！ (' + displayModelName + ')');
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
                 }
 
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    showTempAlert('🛑 已切換為手動模式');
+                    showTempAlert('🛑 已中斷連線，進入手動模式');
                 } else {
                     console.error("AI 分析發生錯誤:", err);
                     showTempAlert('⚠️ AI 失敗: ' + err.message.substring(0, 100));
                 }
+                setAIMode(false); // 失敗則退回手動暗色
             } finally {
                 loadingOverlay.style.display = 'none';
             }
@@ -503,16 +499,23 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let discImgRx = (Math.abs(coords.disc.xmax - coords.disc.xmin) / 2) * img.width;
             let discImgRy = (Math.abs(coords.disc.ymax - coords.disc.ymin) / 2) * img.height;
 
-            let cupImgCx = discImgCx;
-            let cupImgCy = discImgCy;
+            let cupImgCx = ((coords.cup.xmin + coords.cup.xmax) / 2) * img.width;
+            let cupImgCy = ((coords.cup.ymin + coords.cup.ymax) / 2) * img.height;
             let cupImgRx = (Math.abs(coords.cup.xmax - coords.cup.xmin) / 2) * img.width;
             let cupImgRy = (Math.abs(coords.cup.ymax - coords.cup.ymin) / 2) * img.height;
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            let desiredScale = (canvas.height * 0.35) / (discImgRy * 2);
-            imgZoom = desiredScale / baseScale;
-            imgZoom = Math.max(0.5, Math.min(imgZoom, 10.0));
+            let discScreenSize = Math.max(discImgRx, discImgRy) * 2 * baseScale;
+            let desiredSize = Math.min(canvas.width, canvas.height) * 0.45;
+            let targetZoom = desiredSize / discScreenSize;
+            
+            if (targetZoom < 1.0) targetZoom = 1.0;
+            if (targetZoom > 8.0) targetZoom = 8.0;
+
+            imgZoom = targetZoom;
+            mkrZoom = targetZoom;
+            allZoom = targetZoom;
 
             transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discImgCx * transform.scale;
@@ -537,14 +540,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 c_h1: { x: c_left.x, y: c_left.y, color: cColor }, c_h2: { x: c_right.x, y: c_right.y, color: cColor }
             };
 
-            let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
-            mkrZoom = (discImgRy * transform.scale) / (baseScaledMin * 0.055);
-            mkrZoom = Math.max(0.1, Math.min(mkrZoom, 15.0));
-            
             sliderImg.value = imgZoom.toFixed(2);
             sliderMkr.value = mkrZoom.toFixed(2);
+            sliderAll.value = allZoom.toFixed(2);
 
             showCup = true; showDisc = true; updateSegUI(); draw();
+            setAIMode(true); // AI 套用完成維持亮白
         }
 
         function toggleSeg(type) {
@@ -580,6 +581,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             pts.c_h2.x = dh_cx + (targetCupH / 2); pts.c_h2.y = pts.d_h2.y;
 
             draw();
+            setAIMode(false); // 手動改CD，取消AI亮白
             isUpdatingCD = false; 
         }
 
@@ -593,9 +595,52 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
         }
 
         function updateDashboard() {
+            let content = "";
+            let hasWarning = false;
+
             if (systemMessage) {
-                statusDashboard.innerHTML = `<div style="color: #4cd964; margin-bottom: 4px; white-space: nowrap;">${systemMessage}</div>`;
-                statusDashboard.style.borderColor = '#4cd964';
+                content += `<div style="color: #4cd964; margin-bottom: 4px;">${systemMessage}</div>`;
+            }
+
+            if (showCup && showDisc) {
+                let warnings = [];
+                
+                let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
+                let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
+                let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
+                let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
+                
+                if (rimInf < rimSup * 0.95) { 
+                    warnings.push("⚠️ ISNT Violation: I < S");
+                    hasWarning = true;
+                }
+
+                let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
+                let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
+                let notchThreshV = discV * 0.06;
+                let notchThreshH = discH * 0.06;
+
+                if (rimSup < notchThreshV) { warnings.push("⚠️ Superior: Thinning"); hasWarning = true; }
+                if (rimInf < notchThreshV) { warnings.push("⚠️ Inferior: Thinning"); hasWarning = true; }
+                if (rimLeft < notchThreshH) { warnings.push("⚠️ Temporal: Thinning"); hasWarning = true; } 
+                if (rimRight < notchThreshH) { warnings.push("⚠️ Nasal: Thinning"); hasWarning = true; }
+
+                if (aiFindings.hemorrhage) { 
+                    warnings.push("⚠️ Disc Hemorrhage"); 
+                    hasWarning = true; 
+                }
+
+                if (warnings.length > 0) {
+                    let mt = systemMessage ? 'margin-top: 6px; border-top: 1px solid #777; padding-top: 6px;' : '';
+                    content += `<div style="color: #ff3b30; font-weight: bold; line-height: 1.6; text-align: left; ${mt}">` +
+                               warnings.map(w => `<div>${w}</div>`).join('') + 
+                               `</div>`;
+                }
+            }
+
+            if (content !== "") {
+                statusDashboard.innerHTML = content;
+                statusDashboard.style.borderColor = hasWarning ? '#ff3b30' : '#888';
                 statusDashboard.style.display = 'block';
             } else {
                 statusDashboard.style.display = 'none';
@@ -613,6 +658,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             if(!isUpdatingCD && document.activeElement !== sliderCD) {
                 sliderCD.value = vRatio.toFixed(2);
             }
+            updateDashboard(); 
         }
 
         function detectBrightCenter(image) {
@@ -623,72 +669,83 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 tCtx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
                 const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
                 
-                let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
-                let maxB = 0;
+                let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
                 
-                let cx_img = tempCanvas.width / 2;
-                let cy_img = tempCanvas.height / 2;
-                let maxR2 = Math.pow(Math.min(cx_img, cy_img) * 0.75, 2); 
+                for (let i = 0; i < imgData.length; i += 4) {
+                    if (imgData[i] > 15) { 
+                        let px = (i / 4) % tempCanvas.width; let py = Math.floor((i / 4) / tempCanvas.width);
+                        if (px < minX) minX = px; if (px > maxX) maxX = px;
+                        if (py < minY) minY = py; if (py > maxY) maxY = py;
+                    }
+                }
+                
+                let eyeCx = (minX + maxX) / 2, eyeCy = (minY + maxY) / 2;
+                let eyeRx = (maxX - minX) / 2, eyeRy = (maxY - minY) / 2;
+                let eyeR = Math.min(eyeRx, eyeRy);
+                
+                if (eyeR <= 0) return { x: image.width / 2, y: image.height / 2, r: image.width / 8 };
 
+                let bMap = new Float32Array(tempCanvas.width * tempCanvas.height);
                 for (let y = 0; y < tempCanvas.height; y++) {
                     for (let x = 0; x < tempCanvas.width; x++) {
-                        let dx = x - cx_img; let dy = y - cy_img;
-                        if (dx*dx + dy*dy > maxR2) continue; 
-
                         let idx = (y * tempCanvas.width + x) * 4;
-                        let b = imgData[idx]*0.3 + imgData[idx+1]*0.59 + imgData[idx+2]*0.11;
-                        bMap[y * tempCanvas.width + x] = b;
-                        if (b > maxB) maxB = b;
+                        bMap[y * tempCanvas.width + x] = imgData[idx]*0.3 + imgData[idx+1]*0.59 + imgData[idx+2]*0.11;
                     }
                 }
 
-                let thresh = maxB * 0.85;
-                let sumX = 0, sumY = 0, count = 0;
+                let maxScore = -1, bestX = eyeCx, bestY = eyeCy;
+                let winR = Math.max(2, Math.floor(eyeR * 0.15));
 
-                for (let y = 0; y < tempCanvas.height; y++) {
-                    for (let x = 0; x < tempCanvas.width; x++) {
-                        if (bMap[y * tempCanvas.width + x] >= thresh) {
-                            sumX += x; sumY += y; count++;
+                for (let y = minY + winR; y <= maxY - winR; y++) {
+                    for (let x = minX + winR; x <= maxX - winR; x++) {
+                        let dx = x - eyeCx, dy = y - eyeCy;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > eyeR * 0.88) continue; 
+                        
+                        let sum = 0, count = 0;
+                        for(let wy = -winR; wy <= winR; wy++) {
+                            for(let wx = -winR; wx <= winR; wx++) {
+                                if(wx*wx + wy*wy <= winR*winR) { sum += bMap[(y+wy)*tempCanvas.width + (x+wx)]; count++; }
+                            }
                         }
+                        let localAvg = sum / count;
+                        let ny = Math.abs(dy) / eyeR; 
+                        let yWeight = Math.max(0.1, 1 - Math.pow(ny / 0.4, 2)); 
+                        let score = localAvg * yWeight;
+
+                        if (score > maxScore) { maxScore = score; bestX = x; bestY = y; }
                     }
                 }
-
-                if (count === 0) return null;
-                let cx = (sumX / count) / scale;
-                let cy = (sumY / count) / scale;
-
-                return { x: cx, y: cy };
+                return { x: bestX / scale, y: bestY / scale, r: eyeR / scale };
             } catch(e) { return null; }
         }
 
         function resetView() {
-            isAiMode = false;
-            updateLogoModelName();
-
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
             
-            let defaultDiscDiameter = img.height * 0.15; 
+            let discR = (detected && detected.r > 5) ? detected.r : Math.min(img.width, img.height) / 8; 
 
             let baseScale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
             
-            let desiredScale = (canvas.height * 0.35) / defaultDiscDiameter;
-            imgZoom = desiredScale / baseScale;
-            imgZoom = Math.max(0.5, Math.min(imgZoom, 15.0));
-
+            let targetScreenSize = Math.min(canvas.width, canvas.height) * 0.40;
+            let currentScreenSize = (discR * 2) * baseScale;
+            let calculatedZoom = targetScreenSize / currentScreenSize;
+            
+            imgZoom = Math.max(1.0, Math.min(calculatedZoom, 6.0));
+            mkrZoom = imgZoom; 
+            allZoom = imgZoom;
+            
             transform.scale = baseScale * imgZoom;
             transform.x = canvas.width / 2 - discX * transform.scale;
             transform.y = canvas.height / 2 - discY * transform.scale;
 
             let cx = canvas.width / 2; let cy = canvas.height / 2;
-            let baseScaledMin = Math.min(img.width * baseScale, img.height * baseScale);
             
-            mkrZoom = ((defaultDiscDiameter / 2) * transform.scale) / (baseScaledMin * 0.055);
-            mkrZoom = Math.max(0.1, Math.min(mkrZoom, 15.0));
-
-            let dRy = baseScaledMin * mkrZoom * 0.055;
-            let dRx = dRy * 0.9; 
+            let defaultMarkerRadius = Math.min(canvas.width, canvas.height) * 0.22;
+            let dRy = defaultMarkerRadius;
+            let dRx = defaultMarkerRadius * 0.85; 
             
             let currentCDRatio = parseFloat(sliderCD.value) || 0.50;
             let cRy = dRy * currentCDRatio, cRx = dRx * currentCDRatio; 
@@ -704,6 +761,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             sliderMkr.value = mkrZoom.toFixed(2); 
             sliderAll.value = allZoom.toFixed(2);
             draw();
+            setAIMode(false); // 置中預設退回手動模式
         }
 
         function sqr(x) { return x * x; }
@@ -761,36 +819,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
             let val = parseFloat(e.target.value); let factor = val / allZoom;
             let cx = canvas.width/2; let cy = canvas.height/2;
             applyZoomImg(factor, cx, cy); applyZoomMkr(factor, cx, cy);
-            imgZoom *= factor; sliderImg.value = imgZoom; mkrZoom *= factor; sliderMkr.value = mkrZoom; allZoom = val; draw();
+            imgZoom *= factor; sliderImg.value = imgZoom.toFixed(2); 
+            mkrZoom *= factor; sliderMkr.value = mkrZoom.toFixed(2); 
+            allZoom = val; draw();
         });
-
-        // 獨立標籤繪製器：純白文字，深色透明底，無描邊
-        function drawWarningLabel(context, x, y, label, textColor) {
-            let text = "⚠️ " + label;
-            context.font = "bold 15px sans-serif";
-            context.textAlign = "center";
-            context.textBaseline = "middle";
-            
-            let metrics = context.measureText(text);
-            let w = metrics.width + 16;
-            let h = 26;
-            let px = x - w / 2;
-            let py = y - h / 2;
-            
-            // 乾淨的透明深色底框
-            context.fillStyle = "rgba(0, 0, 0, 0.35)"; 
-            context.beginPath();
-            if (context.roundRect) {
-                context.roundRect(px, py, w, h, 6); 
-            } else {
-                context.rect(px, py, w, h); 
-            }
-            context.fill();
-            
-            // 無框線直接填入純白字體
-            context.fillStyle = textColor; 
-            context.fillText(text, x, y + 1.5); 
-        }
 
         function drawMarkersOverlay(context) {
             if (!showDisc && !showCup) return; 
@@ -813,7 +845,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                     context.fillStyle = dColor; context.fill();
                 }
             }
-            
+            context.restore();
+
             function drawDash(p, key, color) {
                 let dashLen = 14; 
                 context.beginPath();
@@ -832,40 +865,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
-            if (showCup && showDisc) {
-                let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
-                let rimInf = Math.abs(pts.d_v2.y - pts.c_v2.y);
-                let rimLeft = Math.abs(pts.c_h1.x - pts.d_h1.x);
-                let rimRight = Math.abs(pts.d_h2.x - pts.c_h2.x);
-                let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
-                let discH = Math.abs(pts.d_h1.x - pts.d_h2.x);
-                let threshV = discV * 0.06;
-                let threshH = discH * 0.06;
-
-                // 修改標籤與線條間的安全距離，避免遮擋
-                if (rimSup < threshV) drawWarningLabel(context, pts.d_v1.x, pts.d_v1.y - 28, "Thin", "#fff");
-                
-                if (rimInf < rimSup * 0.95) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 28, "I < S", "#fff");
-                } else if (rimInf < threshV) {
-                    drawWarningLabel(context, pts.d_v2.x, pts.d_v2.y + 28, "Thin", "#fff");
-                }
-
-                if (rimLeft < threshH) drawWarningLabel(context, pts.d_h1.x - 50, pts.d_h1.y, "Thin", "#fff");
-                if (rimRight < threshH) drawWarningLabel(context, pts.d_h2.x + 50, pts.d_h2.y, "Thin", "#fff");
-            }
-
-            if (aiFindings.hemorrhage && aiFindings.hemorrhage.present) {
-                let hx = transform.x + aiFindings.hemorrhage.x * img.width * transform.scale;
-                let hy = transform.y + aiFindings.hemorrhage.y * img.height * transform.scale;
-                drawWarningLabel(context, hx, hy, "Hemorrhage", "#fff");
-            }
-
             let center = getCenter();
             context.beginPath(); context.arc(center.x, center.y, 8, 0, Math.PI*2);
             context.fillStyle = 'rgba(255, 255, 255, 0.4)'; context.fill();
             context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
-            context.restore();
         }
 
         function draw() {
@@ -991,6 +994,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                     for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                    setAIMode(false); // 手動拖曳標記群組，切回手動模式指示
                 } else if (dragObj.type === 'point') {
                     let dx = mouseX - dragObj.pt.x, dy = mouseY - dragObj.pt.y;
                     dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
@@ -998,10 +1002,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                         let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
                         if (pts[oppKey]) { pts[oppKey].x -= dx; pts[oppKey].y -= dy; }
                     }
+                    setAIMode(false); // 手動拖曳端點，切回手動模式指示
                 } else if (dragObj.type === 'line') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                     dragObj.pts[0].x += dx; dragObj.pts[0].y += dy; dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
                     dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                    setAIMode(false); // 手動拖曳線段，切回手動模式指示
                 }
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
@@ -1042,6 +1048,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                        setAIMode(false); 
                     } else if (dragObj.type === 'point') {
                         let dx = mouseX - dragObj.pt.x, dy = mouseY - dragObj.pt.y;
                         dragObj.pt.x = mouseX; dragObj.pt.y = mouseY;
@@ -1049,10 +1056,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                             let oppKey = dragObj.key.endsWith('1') ? dragObj.key.slice(0, -1) + '2' : dragObj.key.slice(0, -1) + '1';
                             if (pts[oppKey]) { pts[oppKey].x -= dx; pts[oppKey].y -= dy; }
                         }
+                        setAIMode(false); 
                     } else if (dragObj.type === 'line') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                         dragObj.pts[0].x += dx; dragObj.pts[0].y += dy; dragObj.pts[1].x += dx; dragObj.pts[1].y += dy;
                         dragObj.lastX = mouseX; dragObj.lastY = mouseY;
+                        setAIMode(false);
                     }
                     lastMouse = { x: mouseX, y: mouseY }; draw();
                 } else if (isDraggingCanvas) {
@@ -1067,7 +1076,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) using this exa
                 let zoomFactor = dist / lastTouchDist;
                 let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2; let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 applyZoomImg(zoomFactor, centerX, centerY); applyZoomMkr(zoomFactor, centerX, centerY);
-                imgZoom *= zoomFactor; sliderImg.value = imgZoom.toFixed(2); mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom.toFixed(2); allZoom *= zoomFactor; sliderAll.value = allZoom.toFixed(2);
+                imgZoom *= zoomFactor; sliderImg.value = imgZoom.toFixed(2); 
+                mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom.toFixed(2); 
+                allZoom *= zoomFactor; sliderAll.value = allZoom.toFixed(2);
                 lastTouchDist = dist; draw();
             }
         }, {passive: false});
