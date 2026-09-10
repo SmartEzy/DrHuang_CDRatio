@@ -79,7 +79,6 @@
         .btn-cancel { background: #444; color: #fff; }
         .btn-cancel:active { transform: scale(0.95); background: #333; }
 
-        /* 恢復重疊修正的父容器排版 */
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; pointer-events: none; }
         
         .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
@@ -104,7 +103,6 @@
         .seg-btn:active { transform: scale(0.90); }
 
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
-        /* 縮短 width，讓負號跟文字貼近，並強制兩行排版 */
         .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 62px; text-align: left; font-weight: bold; margin-right: 4px; flex-shrink: 0; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; }
         .shortcut { font-size: 0.7rem; color: #999; font-weight: normal; margin-top: 2px; letter-spacing: 0.5px; }
         
@@ -195,7 +193,6 @@
     
     <div id="statusDashboard"></div>
 
-    <!-- 將按鈕與滑桿包裝在同一個 Flex 容器中避免重疊 -->
     <div id="rightControls">
         <div class="panel-box" id="actionPanel">
             <div class="action-item seg-group">
@@ -251,7 +248,6 @@
                 <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
                 <button class="step-btn" onclick="stepZoom('All', 0.2)">+</button>
             </div>
-            <!-- 對稱快捷鍵獨立於同步列下方右側 -->
             <div style="text-align: right; color: #999; font-size: 0.7rem; margin-top: -6px; padding-right: 2px;">
                 對稱 🖱️+Alt
             </div>
@@ -297,6 +293,11 @@
 
         let systemMessage = "";
         let systemMessageTimeout = null;
+
+        // 新增：繪製卡尺功能變數
+        let isDrawingCaliper = false;
+        let caliperStart = null;
+        let caliperEnd = null;
 
         function setAIMode(active) {
             if (active) {
@@ -399,7 +400,6 @@
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
                     
-                    // 顯示整個右側控制容器
                     rightControls.style.display = 'flex';
                     
                     showCup = false; showDisc = true; updateSegUI();
@@ -485,7 +485,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (coords.disc && coords.cup) {
                     if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    // 靜默完成，移除了 showTempAlert 文字提示
                     systemMessage = "";
                     updateDashboard();
                 } else {
@@ -993,6 +992,63 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }
 
+        // 處理測量畫線結束時的幾何計算
+        function finishDrawingCaliper() {
+            if (!isDrawingCaliper) return;
+            isDrawingCaliper = false;
+            
+            if (caliperStart && caliperEnd) {
+                let dx = caliperEnd.x - caliperStart.x;
+                let dy = caliperEnd.y - caliperStart.y;
+                let len = Math.hypot(dx, dy);
+
+                // 防呆：拖曳長度必須大於 15px 才視為有效畫線，避免誤觸
+                if (len > 15 && (showDisc || showCup)) {
+                    let isHoriz = Math.abs(dx) > Math.abs(dy);
+                    // 根據右側面板狀態決定要更新誰：若只亮 Cup，就更新 Cup；否則預設更新外圍 Disc
+                    let target = (showCup && !showDisc) ? 'c' : 'd';
+
+                    let pt1 = {x: caliperStart.x, y: caliperStart.y};
+                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
+
+                    if (isHoriz) {
+                        if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; } // 確保 p1 在左
+                        pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
+                        pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt2.y;
+
+                        // 連動垂直軸：將垂直軸中心移動到新水平軸的中心點
+                        let newCx = (pt1.x + pt2.x) / 2;
+                        let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
+                        let shiftX = newCx - oldCx;
+                        pts[target + '_v1'].x += shiftX;
+                        pts[target + '_v2'].x += shiftX;
+                    } else {
+                        if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; } // 確保 p1 在上
+                        pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
+                        pts[target + '_v2'].x = pt2.x; pts[target + '_v2'].y = pt2.y;
+
+                        // 連動水平軸：將水平軸中心移動到新垂直軸的中心點
+                        let newCy = (pt1.y + pt2.y) / 2;
+                        let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
+                        let shiftY = newCy - oldCy;
+                        pts[target + '_h1'].y += shiftY;
+                        pts[target + '_h2'].y += shiftY;
+                    }
+
+                    if (target === 'd') {
+                        // 如果更新的是 Disc，依據現有比例重新縮放 Cup
+                        setCDRatio(sliderCD.value);
+                    } else {
+                        // 如果更新的是 Cup，重新計算比例
+                        calculateRatio();
+                    }
+                    setAIMode(false);
+                }
+            }
+            caliperStart = null;
+            caliperEnd = null;
+        }
+
         function draw() {
             const dpr = window.devicePixelRatio || 1;
             let w = window.innerWidth;
@@ -1019,6 +1075,34 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             drawMarkersOverlay(ctx);
             calculateRatio();
+
+            // 繪製「卡尺測量」的輔助預覽線段
+            if (isDrawingCaliper && caliperStart && caliperEnd) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(caliperStart.x, caliperStart.y);
+                ctx.lineTo(caliperEnd.x, caliperEnd.y);
+                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                ctx.beginPath(); ctx.arc(caliperStart.x, caliperStart.y, 4, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+                ctx.beginPath(); ctx.arc(caliperEnd.x, caliperEnd.y, 4, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+
+                let isHoriz = Math.abs(caliperEnd.x - caliperStart.x) > Math.abs(caliperEnd.y - caliperStart.y);
+                let targetName = (showCup && !showDisc) ? 'Cup (綠)' : 'Disc (紅)';
+                let axisName = isHoriz ? '水平' : '垂直';
+                
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillStyle = '#ffcc00';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(`設定 ${targetName} ${axisName}線`, caliperEnd.x, caliperEnd.y - 15);
+                ctx.restore();
+            }
 
             if (isTouchMode && (showDisc || showCup) && dragObj && dragObj.type === 'point' && lastMouse) {
                 let magR = 90, magZoom = 1.0; 
@@ -1117,15 +1201,28 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             isTouchMode = false; 
             let mouseX = e.clientX; let mouseY = e.clientY;
             lastMouse = {x: mouseX, y: mouseY}; 
+            
             dragObj = getHitTarget(mouseX, mouseY, false);
-            isDraggingCanvas = !dragObj;
+            
+            // 進入卡尺測量繪製模式 (在空白處點擊且未按下快捷鍵)
+            if (!dragObj && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                isDrawingCaliper = true;
+                caliperStart = {x: mouseX, y: mouseY};
+                caliperEnd = {x: mouseX, y: mouseY};
+            } else if (!dragObj) {
+                isDraggingCanvas = true;
+            }
             draw();
         });
 
         canvas.addEventListener('mousemove', e => {
             if (Date.now() - lastTouchTime < 500) return;
             let mouseX = e.clientX; let mouseY = e.clientY;
-            if (dragObj) {
+            
+            if (isDrawingCaliper) {
+                caliperEnd = {x: mouseX, y: mouseY};
+                draw();
+            } else if (dragObj) {
                 if (dragObj.type === 'group') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                     for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
@@ -1166,7 +1263,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
         window.addEventListener('mouseup', e => { 
             if (Date.now() - lastTouchTime < 500) return;
-            dragObj = null; isDraggingCanvas = false; draw(); 
+            dragObj = null; isDraggingCanvas = false; 
+            finishDrawingCaliper();
+            draw(); 
         });
 
         canvas.addEventListener('touchstart', e => {
@@ -1175,7 +1274,15 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let tx = e.touches[0].clientX; let ty = e.touches[0].clientY;
                 lastMouse = { x: tx, y: ty }; 
                 dragObj = getHitTarget(tx, ty, true);
-                isDraggingCanvas = !dragObj; draw(); 
+                
+                if (!dragObj && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                    isDrawingCaliper = true;
+                    caliperStart = {x: tx, y: ty};
+                    caliperEnd = {x: tx, y: ty};
+                } else if (!dragObj) {
+                    isDraggingCanvas = true;
+                }
+                draw(); 
             } else if (e.touches.length === 2) {
                 lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             }
@@ -1186,7 +1293,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             e.preventDefault();
             if (e.touches.length === 1 && lastMouse) {
                 let mouseX = e.touches[0].clientX; let mouseY = e.touches[0].clientY;
-                if (dragObj) {
+                if (isDrawingCaliper) {
+                    caliperEnd = {x: mouseX, y: mouseY};
+                    draw();
+                } else if (dragObj) {
                     if (dragObj.type === 'group') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
@@ -1233,7 +1343,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }, {passive: false});
 
-        canvas.addEventListener('touchend', () => { lastTouchTime = Date.now(); dragObj = null; isDraggingCanvas = false; draw(); });
+        canvas.addEventListener('touchend', () => { 
+            lastTouchTime = Date.now(); 
+            dragObj = null; isDraggingCanvas = false; 
+            finishDrawingCaliper();
+            draw(); 
+        });
         window.addEventListener('resize', draw);
     </script>
 </body>
