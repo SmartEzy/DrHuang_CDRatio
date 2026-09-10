@@ -98,8 +98,6 @@
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
         .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
         .seg-btn:last-child { border-right: none; }
-        
-        /* 更新按鈕啟動狀態配色 */
         .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
         .seg-btn.active-all { background: rgba(255, 255, 255, 0.15); color: #fff; box-shadow: inset 0 -3px 0 #ccc; }
@@ -165,7 +163,7 @@
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text">⚡ 分析中...</div>
-        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 改手掌握</button>
+        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 改手動標記</button>
     </div>
 
     <div id="exceedWarning">
@@ -561,7 +559,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             setAIMode(true);
         }
 
-        // 修改為 Radio Button 切換邏輯
         function toggleSeg(type) {
             if (type === 'Cup') {
                 showCup = true; showDisc = false;
@@ -1048,6 +1045,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             caliperEnd = null;
         }
 
+        // 新增 1：優化畫線預覽，確保無論背景多亮都清晰可見
         function draw() {
             const dpr = window.devicePixelRatio || 1;
             let w = window.innerWidth;
@@ -1077,27 +1075,45 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (isDrawingCaliper && caliperStart && caliperEnd) {
                 ctx.save();
+                let isHoriz = Math.abs(caliperEnd.x - caliperStart.x) > Math.abs(caliperEnd.y - caliperStart.y);
+                let isCup = (showCup && !showDisc);
+                let targetName = isCup ? 'Cup' : 'Disc';
+                let drawColor = isCup ? cColor : dColor; 
+                let axisName = isHoriz ? '水平' : '垂直';
+
+                // 畫底下較寬的深色實線陰影底框
                 ctx.beginPath();
                 ctx.moveTo(caliperStart.x, caliperStart.y);
                 ctx.lineTo(caliperEnd.x, caliperEnd.y);
-                ctx.setLineDash([5, 5]);
-                ctx.lineWidth = 2.5;
-                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3.5;
+                ctx.strokeStyle = 'rgba(0,0,0,0.6)';
                 ctx.stroke();
 
-                ctx.setLineDash([]);
-                ctx.beginPath(); ctx.arc(caliperStart.x, caliperStart.y, 4, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
-                ctx.beginPath(); ctx.arc(caliperEnd.x, caliperEnd.y, 4, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+                // 畫彩色的虛線主體
+                ctx.beginPath();
+                ctx.moveTo(caliperStart.x, caliperStart.y);
+                ctx.lineTo(caliperEnd.x, caliperEnd.y);
+                ctx.setLineDash([6, 4]);
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = drawColor;
+                ctx.stroke();
 
-                let isHoriz = Math.abs(caliperEnd.x - caliperStart.x) > Math.abs(caliperEnd.y - caliperStart.y);
-                let targetName = (showCup && !showDisc) ? 'Cup' : 'Disc';
-                let axisName = isHoriz ? '水平' : '垂直';
+                // 畫端點圓圈 (帶黑框)
+                ctx.setLineDash([]);
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)';
                 
+                ctx.beginPath(); ctx.arc(caliperStart.x, caliperStart.y, 4, 0, Math.PI*2); ctx.fillStyle=drawColor; ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.arc(caliperEnd.x, caliperEnd.y, 4, 0, Math.PI*2); ctx.fillStyle=drawColor; ctx.fill(); ctx.stroke();
+                
+                // 畫提示文字
                 ctx.font = 'bold 14px sans-serif';
-                ctx.fillStyle = '#ffcc00';
+                ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
-                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowColor = 'rgba(0,0,0,0.9)';
                 ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
                 ctx.fillText(`設定 ${targetName} ${axisName}線`, caliperEnd.x, caliperEnd.y - 15);
                 ctx.restore();
             }
