@@ -1045,7 +1045,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             caliperEnd = null;
         }
 
-        // 新增 1：優化畫線預覽，確保無論背景多亮都清晰可見
+        // 修正：將畫線的深色外框改為「白色邊緣」，解決過黑不明顯的問題
         function draw() {
             const dpr = window.devicePixelRatio || 1;
             let w = window.innerWidth;
@@ -1081,39 +1081,36 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let drawColor = isCup ? cColor : dColor; 
                 let axisName = isHoriz ? '水平' : '垂直';
 
-                // 畫底下較寬的深色實線陰影底框
+                // 底下的白色邊緣，增加對比亮度
                 ctx.beginPath();
                 ctx.moveTo(caliperStart.x, caliperStart.y);
                 ctx.lineTo(caliperEnd.x, caliperEnd.y);
-                ctx.lineWidth = 3.5;
-                ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; 
                 ctx.stroke();
 
-                // 畫彩色的虛線主體
+                // 彩色的虛線主體
                 ctx.beginPath();
                 ctx.moveTo(caliperStart.x, caliperStart.y);
                 ctx.lineTo(caliperEnd.x, caliperEnd.y);
                 ctx.setLineDash([6, 4]);
-                ctx.lineWidth = 2.5;
+                ctx.lineWidth = 2;
                 ctx.strokeStyle = drawColor;
                 ctx.stroke();
 
-                // 畫端點圓圈 (帶黑框)
+                // 端點的白色外框圓圈
                 ctx.setLineDash([]);
                 ctx.lineWidth = 1.5;
-                ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
                 
                 ctx.beginPath(); ctx.arc(caliperStart.x, caliperStart.y, 4, 0, Math.PI*2); ctx.fillStyle=drawColor; ctx.fill(); ctx.stroke();
                 ctx.beginPath(); ctx.arc(caliperEnd.x, caliperEnd.y, 4, 0, Math.PI*2); ctx.fillStyle=drawColor; ctx.fill(); ctx.stroke();
                 
-                // 畫提示文字
                 ctx.font = 'bold 14px sans-serif';
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = '#ffcc00';
                 ctx.textAlign = 'center';
-                ctx.shadowColor = 'rgba(0,0,0,0.9)';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
                 ctx.shadowBlur = 4;
-                ctx.shadowOffsetX = 1;
-                ctx.shadowOffsetY = 1;
                 ctx.fillText(`設定 ${targetName} ${axisName}線`, caliperEnd.x, caliperEnd.y - 15);
                 ctx.restore();
             }
@@ -1218,7 +1215,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             dragObj = getHitTarget(mouseX, mouseY, false);
             
-            if (!dragObj && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            // 修正 2：如果 Cup/Disc 都沒亮 (ALL off)，那就直接進入拖曳圖片模式
+            if (!dragObj && (showCup || showDisc) && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
                 isDrawingCaliper = true;
                 caliperStart = {x: mouseX, y: mouseY};
                 caliperEnd = {x: mouseX, y: mouseY};
@@ -1288,7 +1286,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 lastMouse = { x: tx, y: ty }; 
                 dragObj = getHitTarget(tx, ty, true);
                 
-                if (!dragObj && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                if (!dragObj && (showCup || showDisc) && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
                     isDrawingCaliper = true;
                     caliperStart = {x: tx, y: ty};
                     caliperEnd = {x: tx, y: ty};
