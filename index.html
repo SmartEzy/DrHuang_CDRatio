@@ -98,8 +98,11 @@
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
         .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
         .seg-btn:last-child { border-right: none; }
+        
+        /* 更新按鈕啟動狀態配色 */
         .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
+        .seg-btn.active-all { background: rgba(255, 255, 255, 0.15); color: #fff; box-shadow: inset 0 -3px 0 #ccc; }
         .seg-btn:active { transform: scale(0.90); }
 
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
@@ -162,7 +165,7 @@
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text">⚡ 分析中...</div>
-        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 改手動標記</button>
+        <button class="cancel-ai-btn" onclick="cancelAI()">🛑 改手掌握</button>
     </div>
 
     <div id="exceedWarning">
@@ -294,7 +297,6 @@
         let systemMessage = "";
         let systemMessageTimeout = null;
 
-        // 新增：繪製卡尺功能變數
         let isDrawingCaliper = false;
         let caliperStart = null;
         let caliperEnd = null;
@@ -559,10 +561,13 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             setAIMode(true);
         }
 
+        // 修改為 Radio Button 切換邏輯
         function toggleSeg(type) {
-            if (type === 'Cup') showCup = !showCup;
-            else if (type === 'Disc') showDisc = !showDisc;
-            else if (type === 'All') {
+            if (type === 'Cup') {
+                showCup = true; showDisc = false;
+            } else if (type === 'Disc') {
+                showCup = false; showDisc = true;
+            } else if (type === 'All') {
                 if (showCup && showDisc) { showCup = false; showDisc = false; } 
                 else { showCup = true; showDisc = true; }
             }
@@ -570,8 +575,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function updateSegUI() {
-            document.getElementById('btnCup').classList.toggle('active-cup', showCup);
-            document.getElementById('btnDisc').classList.toggle('active-disc', showDisc);
+            document.getElementById('btnCup').classList.toggle('active-cup', showCup && !showDisc);
+            document.getElementById('btnDisc').classList.toggle('active-disc', showDisc && !showCup);
+            document.getElementById('btnAll').classList.toggle('active-all', showCup && showDisc);
         }
 
         function setCDRatio(ratioVal) {
@@ -992,7 +998,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }
 
-        // 處理測量畫線結束時的幾何計算
         function finishDrawingCaliper() {
             if (!isDrawingCaliper) return;
             isDrawingCaliper = false;
@@ -1002,32 +1007,28 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let dy = caliperEnd.y - caliperStart.y;
                 let len = Math.hypot(dx, dy);
 
-                // 防呆：拖曳長度必須大於 15px 才視為有效畫線，避免誤觸
                 if (len > 15 && (showDisc || showCup)) {
                     let isHoriz = Math.abs(dx) > Math.abs(dy);
-                    // 根據右側面板狀態決定要更新誰：若只亮 Cup，就更新 Cup；否則預設更新外圍 Disc
                     let target = (showCup && !showDisc) ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
                     let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
 
                     if (isHoriz) {
-                        if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; } // 確保 p1 在左
+                        if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
                         pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt2.y;
 
-                        // 連動垂直軸：將垂直軸中心移動到新水平軸的中心點
                         let newCx = (pt1.x + pt2.x) / 2;
                         let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
                         let shiftX = newCx - oldCx;
                         pts[target + '_v1'].x += shiftX;
                         pts[target + '_v2'].x += shiftX;
                     } else {
-                        if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; } // 確保 p1 在上
+                        if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
                         pts[target + '_v2'].x = pt2.x; pts[target + '_v2'].y = pt2.y;
 
-                        // 連動水平軸：將水平軸中心移動到新垂直軸的中心點
                         let newCy = (pt1.y + pt2.y) / 2;
                         let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
                         let shiftY = newCy - oldCy;
@@ -1036,10 +1037,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     }
 
                     if (target === 'd') {
-                        // 如果更新的是 Disc，依據現有比例重新縮放 Cup
                         setCDRatio(sliderCD.value);
                     } else {
-                        // 如果更新的是 Cup，重新計算比例
                         calculateRatio();
                     }
                     setAIMode(false);
@@ -1076,7 +1075,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             drawMarkersOverlay(ctx);
             calculateRatio();
 
-            // 繪製「卡尺測量」的輔助預覽線段
             if (isDrawingCaliper && caliperStart && caliperEnd) {
                 ctx.save();
                 ctx.beginPath();
@@ -1092,7 +1090,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 ctx.beginPath(); ctx.arc(caliperEnd.x, caliperEnd.y, 4, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
 
                 let isHoriz = Math.abs(caliperEnd.x - caliperStart.x) > Math.abs(caliperEnd.y - caliperStart.y);
-                let targetName = (showCup && !showDisc) ? 'Cup (綠)' : 'Disc (紅)';
+                let targetName = (showCup && !showDisc) ? 'Cup' : 'Disc';
                 let axisName = isHoriz ? '水平' : '垂直';
                 
                 ctx.font = 'bold 14px sans-serif';
@@ -1204,7 +1202,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             dragObj = getHitTarget(mouseX, mouseY, false);
             
-            // 進入卡尺測量繪製模式 (在空白處點擊且未按下快捷鍵)
             if (!dragObj && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
                 isDrawingCaliper = true;
                 caliperStart = {x: mouseX, y: mouseY};
