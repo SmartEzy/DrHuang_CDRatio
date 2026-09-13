@@ -79,12 +79,13 @@
         .btn-cancel { background: #444; color: #fff; }
         .btn-cancel:active { transform: scale(0.95); background: #333; }
 
-        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; pointer-events: none; }
+        /* 修正 2 & 3: 面板整體緊湊化 */
+        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 10; pointer-events: none; }
         
-        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
+        .panel-box { background: rgba(0,0,0,0.75); padding: 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
         
-        #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
-        #sliderPanel { gap: 12px; display: flex; flex-direction: column; }
+        #actionPanel { width: 135px; gap: 8px; align-items: stretch; }
+        #sliderPanel { gap: 8px; display: flex; flex-direction: column; }
 
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
@@ -96,7 +97,12 @@
         .action-btn-ai:active { background: #1e3c72; }
 
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
-        .seg-btn { flex: 1; height: 100%; background: transparent; color: #888; border: none; padding: 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
+        
+        /* 修正 1: Cup/Disc 加入附註字樣，高度微調容納兩行 */
+        .action-item.seg-group { height: 34px; }
+        .seg-btn { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; background: transparent; color: #888; border: none; padding: 2px 0; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; line-height: 1.1; }
+        .seg-hint { font-size: 0.55rem; font-weight: normal; opacity: 0.6; margin-top: 1px; }
+        
         .seg-btn:last-child { border-right: none; }
         .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
@@ -104,16 +110,18 @@
         .seg-btn:active { transform: scale(0.90); }
 
         .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
-        .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 62px; text-align: left; font-weight: bold; margin-right: 4px; flex-shrink: 0; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; }
-        .shortcut { font-size: 0.7rem; color: #999; font-weight: normal; margin-top: 2px; letter-spacing: 0.5px; }
+        /* 修正 2: 縮小標籤寬度與按鈕間距 */
+        .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 52px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; }
+        .shortcut { font-size: 0.65rem; color: #999; font-weight: normal; margin-top: 2px; letter-spacing: 0.5px; }
         
-        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
+        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 22px; height: 22px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
         .step-btn:hover { background: rgba(255,255,255,0.25); }
         .step-btn:active { transform: scale(0.9); background: #4cd964; color: #111; }
         
         .divider { height: 1px; background: #555; margin: 2px 0; width: 100%; }
 
-        input[type=range] { -webkit-appearance: none; width: 100px; background: transparent; }
+        /* 修正 2: 縮短拉桿長度 */
+        input[type=range] { -webkit-appearance: none; width: 65px; background: transparent; margin: 0 2px; }
         input[type=range]:focus { outline: none; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; margin-top: -5px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: 0.1s; }
@@ -133,10 +141,10 @@
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; }
             
-            #rightControls { right: 15px; bottom: 20px; gap: 10px; }
-            .panel-box { padding: 12px; border-radius: 12px; }
-            #actionPanel { width: 130px; padding: 10px; } 
-            input[type=range] { width: 80px; }
+            #rightControls { right: 15px; bottom: 20px; gap: 8px; }
+            .panel-box { padding: 8px 10px; border-radius: 12px; }
+            #actionPanel { width: 125px; gap: 6px; } 
+            input[type=range] { width: 55px; margin: 0; }
         }
     </style>
 </head>
@@ -197,9 +205,15 @@
     <div id="rightControls">
         <div class="panel-box" id="actionPanel">
             <div class="action-item seg-group">
-                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')" title="快捷鍵: Ctrl+拖曳畫線">Cup</button>
-                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')" title="快捷鍵: Shift+拖曳畫線">Disc</button>
-                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
+                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')" title="快捷鍵: Ctrl+拖曳畫線">
+                    <span>Cup</span><span class="seg-hint">Ctrl</span>
+                </button>
+                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')" title="快捷鍵: Shift+拖曳畫線">
+                    <span>Disc</span><span class="seg-hint">Shift</span>
+                </button>
+                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">
+                    <span>ALL</span><span class="seg-hint" style="opacity: 0;">-</span>
+                </button>
             </div>
             <div class="action-item">
                 <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
@@ -208,11 +222,10 @@
                 <button class="action-btn" onclick="undo()" title="快捷鍵: Ctrl+Z 或 Cmd+Z" style="flex: 1;">↩ 復原</button>
                 <button class="action-btn" onclick="redo()" title="快捷鍵: Ctrl+Y 或 Cmd+Shift+Z" style="flex: 1;">↪ 重做</button>
             </div>
-            <div class="action-item">
-                <button class="action-btn" onclick="resetView()">置中</button>
-            </div>
-            <div class="action-item">
-                <button class="action-btn" onclick="document.getElementById('fileInput').click()">換圖</button>
+            <!-- 修正 3: 將置中與換圖合併在一排，大幅節省高度 -->
+            <div class="action-item" style="gap: 6px;">
+                <button class="action-btn" onclick="resetView()" style="flex: 1;">置中</button>
+                <button class="action-btn" onclick="document.getElementById('fileInput').click()" style="flex: 1;">換圖</button>
             </div>
         </div>
 
@@ -1064,23 +1077,16 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
+            // 修正：將中心點化繁為簡，回歸單層半透明圓加白框，清楚又乾淨
             let center = getCenter();
             context.save();
-            context.beginPath(); context.arc(center.x, center.y, 7, 0, Math.PI*2);
-            context.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
+            context.beginPath(); context.arc(center.x, center.y, 6, 0, Math.PI*2);
+            context.fillStyle = 'rgba(0, 0, 0, 0.4)'; 
             context.fill();
             
-            context.lineWidth = 3;
-            context.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-            context.stroke();
-            
-            context.lineWidth = 1;
+            context.lineWidth = 2;
             context.strokeStyle = '#fff';
             context.stroke();
-
-            context.beginPath(); context.arc(center.x, center.y, 2, 0, Math.PI*2);
-            context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            context.fill();
             context.restore();
 
             if (showCup && showDisc) {
@@ -1128,20 +1134,15 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (caliperStart && caliperEnd) {
                 let dx = caliperEnd.x - caliperStart.x;
                 let dy = caliperEnd.y - caliperStart.y;
-                let isHoriz = Math.abs(dx) > Math.abs(dy);
-                
-                // 修正：將「視覺預覽的正交鎖定座標」真正套用到存檔階段
-                let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
-                let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
-
-                let len = Math.hypot(drawEndX - caliperStart.x, drawEndY - caliperStart.y);
+                let len = Math.hypot(dx, dy);
 
                 if (len > 15 && (showDisc || showCup)) {
+                    let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
                     let otherTarget = target === 'd' ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                    let pt2 = {x: drawEndX, y: drawEndY}; // 這裡使用修正後的正交座標
+                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
 
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
@@ -1149,45 +1150,27 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt2.y;
 
                         let newCx = (pt1.x + pt2.x) / 2;
-                        let newCy = pt1.y;
                         let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
-                        let oldCy = (pts[target + '_v1'].y + pts[target + '_v2'].y) / 2;
                         let shiftX = newCx - oldCx;
-                        let shiftY = newCy - oldCy;
-                        
-                        pts[target + '_v1'].x += shiftX; pts[target + '_v1'].y += shiftY;
-                        pts[target + '_v2'].x += shiftX; pts[target + '_v2'].y += shiftY;
-                        
-                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
-                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
-                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
-                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
+                        pts[target + '_v1'].x += shiftX;
+                        pts[target + '_v2'].x += shiftX;
                     } else {
                         if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
                         pts[target + '_v2'].x = pt2.x; pts[target + '_v2'].y = pt2.y;
 
-                        let newCx = pt1.x;
                         let newCy = (pt1.y + pt2.y) / 2;
-                        let oldCx = (pts[target + '_h1'].x + pts[target + '_h2'].x) / 2;
                         let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
-                        let shiftX = newCx - oldCx;
                         let shiftY = newCy - oldCy;
-                        
-                        pts[target + '_h1'].x += shiftX; pts[target + '_h1'].y += shiftY;
-                        pts[target + '_h2'].x += shiftX; pts[target + '_h2'].y += shiftY;
-
-                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
-                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
-                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
-                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
+                        pts[target + '_h1'].y += shiftY;
+                        pts[target + '_h2'].y += shiftY;
                     }
 
+                    showCup = true; showDisc = true; updateSegUI();
+                    
                     if (target === 'd') {
-                        showCup = true; showDisc = true; updateSegUI();
                         setCDRatio(sliderCD.value);
                     } else {
-                        showCup = true; showDisc = true; updateSegUI();
                         calculateRatio();
                     }
                     setAIMode(false);
@@ -1411,8 +1394,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     setAIMode(false); 
                 } else if (dragObj.type === 'point') {
                     let k = dragObj.key;
-                    
-                    // 防呆鎖定：確保端點只能在自己的軸上移動，絕對不會被拉歪
                     let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                     let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
@@ -1504,7 +1485,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     } else if (dragObj.type === 'point') {
                         let k = dragObj.key;
                         
-                        // 觸控模式的防呆鎖定
                         let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                         let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
