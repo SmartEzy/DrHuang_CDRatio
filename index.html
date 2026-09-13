@@ -82,19 +82,17 @@
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; z-index: 10; pointer-events: none; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; width: 145px; gap: 8px; }
         
-        .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
+        .action-item { display: flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; }
         
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
+        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 28px; line-height: 26px; width: 100%; box-sizing: border-box; }
         .action-btn:active { background: #222; transform: scale(0.95); }
         
         .action-btn-ai { background: linear-gradient(135deg, #1e3c72, #2a5298); border: 1px solid #4a90e2; color: rgba(255, 255, 255, 0.45); transition: color 0.3s; }
         .action-btn-ai.ai-active { color: #fff; font-weight: bold; text-shadow: 0 0 5px rgba(255,255,255,0.4); box-shadow: 0 0 8px rgba(74, 144, 226, 0.4); }
         .action-btn-ai:active { background: #1e3c72; }
 
-        .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; }
-        .action-item.seg-group { height: 34px; }
-        .seg-btn { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; background: transparent; color: #888; border: none; padding: 2px 0; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; line-height: 1.1; }
-        .seg-hint { font-size: 0.55rem; font-weight: normal; opacity: 0.6; margin-top: 1px; }
+        .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; height: 28px; width: 100%; }
+        .seg-btn { flex: 1; display: flex; justify-content: center; align-items: center; background: transparent; color: #888; border: none; padding: 0; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
         .seg-btn:last-child { border-right: none; }
         .seg-btn.active-cup { background: rgba(76, 217, 100, 0.2); color: #4cd964; box-shadow: inset 0 -3px 0 #4cd964; }
         .seg-btn.active-disc { background: rgba(255, 59, 48, 0.2); color: #ff3b30; box-shadow: inset 0 -3px 0 #ff3b30; }
@@ -107,15 +105,10 @@
         
         .divider { height: 1px; background: #555; width: 100%; margin: 0; }
 
-        .shortcut-list { display: flex; flex-direction: column; gap: 5px; padding: 2px 0px; }
-        .shortcut-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px; }
+        .shortcut-list { display: flex; flex-direction: column; gap: 6px; padding: 2px 0px; }
+        .shortcut-row { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
         .shortcut-row .s-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
         .shortcut-row .s-key { font-size: 0.68rem; color: #999; width: 64px; text-align: left; white-space: nowrap; letter-spacing: -0.3px; }
-        
-        /* 隱藏式按鈕：平時與一般文字無異，滑鼠移入時才稍微提示 */
-        .clickable-row { cursor: pointer; transition: 0.1s; margin: 0 -4px; padding: 2px 4px; border-radius: 4px; }
-        .clickable-row:hover { background: rgba(255, 255, 255, 0.1); }
-        .clickable-row:active { transform: scale(0.95); }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
@@ -190,16 +183,19 @@
 
     <div id="rightControls">
         <div class="panel-box" id="mainPanel">
-            <div class="action-item seg-group">
-                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')" title="快捷鍵: Ctrl+拖曳畫線">
-                    <span>Cup</span><span class="seg-hint">Ctrl</span>
-                </button>
-                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')" title="快捷鍵: Shift+拖曳畫線">
-                    <span>Disc</span><span class="seg-hint">Shift</span>
-                </button>
-                <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">
-                    <span>ALL</span><span class="seg-hint" style="opacity: 0;">-</span>
-                </button>
+            
+            <!-- 修正 3：Ctrl / Shift 移出框外下方 -->
+            <div style="display: flex; flex-direction: column; width: 100%; gap: 2px;">
+                <div class="seg-group">
+                    <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')" title="快捷鍵: Ctrl+拖曳畫線">Cup</button>
+                    <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')" title="快捷鍵: Shift+拖曳畫線">Disc</button>
+                    <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
+                </div>
+                <div style="display: flex; width: 100%; text-align: center; font-size: 0.55rem; color: #888;">
+                    <div style="flex: 1;">Ctrl</div>
+                    <div style="flex: 1;">Shift</div>
+                    <div style="flex: 1;"></div>
+                </div>
             </div>
             
             <div class="action-item">
@@ -231,12 +227,23 @@
             <div class="divider"></div>
 
             <div class="shortcut-list">
-                <div class="shortcut-row"><span class="s-title">圖片</span><span class="s-key">滾輪+Shift</span></div>
-                <div class="shortcut-row clickable-row" onclick="generateDefaultMarkers()" title="點擊生成預設尺標">
-                    <span class="s-title">尺標</span><span class="s-key">滾輪+Alt</span>
+                <div class="shortcut-row">
+                    <span class="s-title">圖片</span>
+                    <span class="s-key">滾輪+Shift</span>
                 </div>
-                <div class="shortcut-row"><span class="s-title">同步</span><span class="s-key">滾輪</span></div>
-                <div class="shortcut-row"><span class="s-title">對稱</span><span class="s-key">🖱️+Alt</span></div>
+                <!-- 修正 1：將尺標獨立做成和上面一樣的 action-btn，並對齊右側文字 -->
+                <div class="shortcut-row">
+                    <button class="action-btn" onclick="generateDefaultMarkers()" style="width: 46px; height: 21px; font-size: 0.75rem; line-height: 19px;">尺標</button>
+                    <span class="s-key">滾輪+Alt</span>
+                </div>
+                <div class="shortcut-row">
+                    <span class="s-title">同步</span>
+                    <span class="s-key">滾輪</span>
+                </div>
+                <div class="shortcut-row">
+                    <span class="s-title">對稱</span>
+                    <span class="s-key">🖱️+Alt</span>
+                </div>
             </div>
         </div>
         
@@ -315,7 +322,6 @@
             }
         });
 
-        // 轉換座標系用工具函數
         function toImgCoord(sx, sy) {
             return { x: (sx - transform.x) / transform.scale, y: (sy - transform.y) / transform.scale };
         }
@@ -1167,30 +1173,56 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (len > 15 && (showDisc || showCup)) {
                     let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
+                    let otherTarget = target === 'd' ? 'c' : 'd';
 
-                    let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
+                    // 修正 3：真正鎖定座標，捨棄手抖原始座標
+                    let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
+                    let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
 
-                    if (isHoriz) {
-                        if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
-                        pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
-                        pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt1.y;
+                    if (Object.keys(pts).length === 0) {
+                        let cx = (caliperStart.x + drawEndX) / 2;
+                        let cy = (caliperStart.y + drawEndY) / 2;
+                        let r = Math.abs(isHoriz ? (drawEndX - caliperStart.x)/2 : (drawEndY - caliperStart.y)/2);
+                        
+                        let cd = parseFloat(sliderCD.value) || 0.50;
+                        let cR = target === 'c' ? r : r * cd;
+                        let dR = target === 'd' ? r : (r / cd);
+                        
+                        if(cR < 10) cR = 10;
+                        if(dR < 20) dR = 20;
 
-                        let newCx = (pt1.x + pt2.x) / 2;
-                        let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
-                        let shiftX = newCx - oldCx;
-                        pts[target + '_v1'].x += shiftX;
-                        pts[target + '_v2'].x += shiftX;
+                        pts = {
+                            d_v1: {x: cx, y: cy - dR, color: dColor}, d_v2: {x: cx, y: cy + dR, color: dColor},
+                            c_v1: {x: cx, y: cy - cR, color: cColor}, c_v2: {x: cx, y: cy + cR, color: cColor},
+                            d_h1: {x: cx - dR, y: cy, color: dColor}, d_h2: {x: cx + dR, y: cy, color: dColor},
+                            c_h1: {x: cx - cR, y: cy, color: cColor}, c_h2: {x: cx + cR, y: cy, color: cColor}
+                        };
                     } else {
-                        if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
-                        pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
-                        pts[target + '_v2'].x = pt1.x; pts[target + '_v2'].y = pt2.y;
+                        // 修正 3：使用真正鎖定的 drawEndX 和 drawEndY
+                        let pt1 = {x: caliperStart.x, y: caliperStart.y};
+                        let pt2 = {x: drawEndX, y: drawEndY};
 
-                        let newCy = (pt1.y + pt2.y) / 2;
-                        let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
-                        let shiftY = newCy - oldCy;
-                        pts[target + '_h1'].y += shiftY;
-                        pts[target + '_h2'].y += shiftY;
+                        if (isHoriz) {
+                            if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
+                            pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
+                            pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt1.y;
+
+                            let newCx = (pt1.x + pt2.x) / 2;
+                            let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
+                            let shiftX = newCx - oldCx;
+                            pts[target + '_v1'].x += shiftX;
+                            pts[target + '_v2'].x += shiftX;
+                        } else {
+                            if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
+                            pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
+                            pts[target + '_v2'].x = pt1.x; pts[target + '_v2'].y = pt2.y;
+
+                            let newCy = (pt1.y + pt2.y) / 2;
+                            let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
+                            let shiftY = newCy - oldCy;
+                            pts[target + '_h1'].y += shiftY;
+                            pts[target + '_h2'].y += shiftY;
+                        }
                     }
 
                     showCup = true; showDisc = true; updateSegUI();
@@ -1518,7 +1550,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
                         let k = dragObj.key;
-                        
                         let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                         let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
