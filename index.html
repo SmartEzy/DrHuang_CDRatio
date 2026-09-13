@@ -1064,10 +1064,25 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
+            // 修正：在白色圓心加入黑框底色與實心圓點準星，解決高亮背景下看不清楚的問題
             let center = getCenter();
+            context.save();
             context.beginPath(); context.arc(center.x, center.y, 8, 0, Math.PI*2);
-            context.fillStyle = 'rgba(255, 255, 255, 0.4)'; context.fill();
-            context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
+            context.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            context.fill();
+            
+            context.lineWidth = 3.5;
+            context.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+            context.stroke();
+            
+            context.lineWidth = 1.5;
+            context.strokeStyle = '#fff';
+            context.stroke();
+
+            context.beginPath(); context.arc(center.x, center.y, 1.5, 0, Math.PI*2);
+            context.fillStyle = '#333';
+            context.fill();
+            context.restore();
 
             if (showCup && showDisc) {
                 let rimSup = Math.abs(pts.c_v1.y - pts.d_v1.y); 
@@ -1107,7 +1122,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }
 
-        // 修正：畫完線後，只更新數值，不再強制覆蓋 Cup 大小
         function finishDrawingCaliper() {
             if (!isDrawingCaliper) return;
             isDrawingCaliper = false;
@@ -1120,7 +1134,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (len > 15 && (showDisc || showCup)) {
                     let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
-                    let otherTarget = target === 'd' ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
                     let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
@@ -1133,15 +1146,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         let newCx = (pt1.x + pt2.x) / 2;
                         let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
                         let shiftX = newCx - oldCx;
-                        
                         pts[target + '_v1'].x += shiftX;
                         pts[target + '_v2'].x += shiftX;
-                        
-                        // 連動平移另一目標的中心點，但不改變長度
-                        pts[otherTarget + '_v1'].x += shiftX;
-                        pts[otherTarget + '_v2'].x += shiftX;
-                        pts[otherTarget + '_h1'].x += shiftX;
-                        pts[otherTarget + '_h2'].x += shiftX;
                     } else {
                         if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
@@ -1150,19 +1156,15 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         let newCy = (pt1.y + pt2.y) / 2;
                         let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
                         let shiftY = newCy - oldCy;
-                        
                         pts[target + '_h1'].y += shiftY;
                         pts[target + '_h2'].y += shiftY;
-
-                        // 連動平移另一目標的中心點，但不改變長度
-                        pts[otherTarget + '_v1'].y += shiftY;
-                        pts[otherTarget + '_v2'].y += shiftY;
-                        pts[otherTarget + '_h1'].y += shiftY;
-                        pts[otherTarget + '_h2'].y += shiftY;
                     }
 
-                    // 完全移除用 Slider 覆蓋 Cup 的邏輯，改為純粹更新數值顯示
-                    calculateRatio();
+                    if (target === 'd') {
+                        setCDRatio(sliderCD.value);
+                    } else {
+                        calculateRatio();
+                    }
                     setAIMode(false);
                 }
             }
@@ -1203,7 +1205,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let dy = caliperEnd.y - caliperStart.y;
                 let isHoriz = Math.abs(dx) > Math.abs(dy);
                 
-                // 動態正交鎖定
                 let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
                 let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
 
