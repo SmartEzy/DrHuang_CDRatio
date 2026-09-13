@@ -112,9 +112,9 @@
         .shortcut-row .s-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
         .shortcut-row .s-key { font-size: 0.68rem; color: #999; width: 64px; text-align: left; white-space: nowrap; letter-spacing: -0.3px; }
         
-        /* 移除綠框，改為乾淨的純文字按鈕互動樣式 */
-        .clickable-row { cursor: pointer; transition: 0.2s; border-radius: 4px; }
-        .clickable-row:hover .s-title { color: #4cd964; text-decoration: underline; }
+        /* 隱藏式按鈕：平時與一般文字無異，滑鼠移入時才稍微提示 */
+        .clickable-row { cursor: pointer; transition: 0.1s; margin: 0 -4px; padding: 2px 4px; border-radius: 4px; }
+        .clickable-row:hover { background: rgba(255, 255, 255, 0.1); }
         .clickable-row:active { transform: scale(0.95); }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -232,7 +232,6 @@
 
             <div class="shortcut-list">
                 <div class="shortcut-row"><span class="s-title">圖片</span><span class="s-key">滾輪+Shift</span></div>
-                <!-- 改為純文字按鈕樣式，拿掉綠框與加號 -->
                 <div class="shortcut-row clickable-row" onclick="generateDefaultMarkers()" title="點擊生成預設尺標">
                     <span class="s-title">尺標</span><span class="s-key">滾輪+Alt</span>
                 </div>
@@ -316,6 +315,7 @@
             }
         });
 
+        // 轉換座標系用工具函數
         function toImgCoord(sx, sy) {
             return { x: (sx - transform.x) / transform.scale, y: (sy - transform.y) / transform.scale };
         }
@@ -400,7 +400,7 @@
             }
         }
 
-        function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key'] || ''; }
+        function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-1.5-flash'; }
 
         function updateLogoModelName() {
@@ -1171,46 +1171,26 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
                     let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
 
-                    if (Object.keys(pts).length === 0) {
-                        let cx = (caliperStart.x + pt2.x) / 2;
-                        let cy = (caliperStart.y + pt2.y) / 2;
-                        let r = Math.abs(isHoriz ? (pt2.x - caliperStart.x)/2 : (pt2.y - caliperStart.y)/2);
-                        
-                        let cd = parseFloat(sliderCD.value) || 0.50;
-                        let cR = target === 'c' ? r : r * cd;
-                        let dR = target === 'd' ? r : (r / cd);
-                        
-                        if(cR < 10) cR = 10;
-                        if(dR < 20) dR = 20;
+                    if (isHoriz) {
+                        if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
+                        pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
+                        pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt1.y;
 
-                        pts = {
-                            d_v1: {x: cx, y: cy - dR, color: dColor}, d_v2: {x: cx, y: cy + dR, color: dColor},
-                            c_v1: {x: cx, y: cy - cR, color: cColor}, c_v2: {x: cx, y: cy + cR, color: cColor},
-                            d_h1: {x: cx - dR, y: cy, color: dColor}, d_h2: {x: cx + dR, y: cy, color: dColor},
-                            c_h1: {x: cx - cR, y: cy, color: cColor}, c_h2: {x: cx + cR, y: cy, color: cColor}
-                        };
+                        let newCx = (pt1.x + pt2.x) / 2;
+                        let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
+                        let shiftX = newCx - oldCx;
+                        pts[target + '_v1'].x += shiftX;
+                        pts[target + '_v2'].x += shiftX;
                     } else {
-                        if (isHoriz) {
-                            if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
-                            pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
-                            pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt1.y;
+                        if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
+                        pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
+                        pts[target + '_v2'].x = pt1.x; pts[target + '_v2'].y = pt2.y;
 
-                            let newCx = (pt1.x + pt2.x) / 2;
-                            let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
-                            let shiftX = newCx - oldCx;
-                            pts[target + '_v1'].x += shiftX;
-                            pts[target + '_v2'].x += shiftX;
-                        } else {
-                            if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
-                            pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
-                            pts[target + '_v2'].x = pt1.x; pts[target + '_v2'].y = pt2.y;
-
-                            let newCy = (pt1.y + pt2.y) / 2;
-                            let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
-                            let shiftY = newCy - oldCy;
-                            pts[target + '_h1'].y += shiftY;
-                            pts[target + '_h2'].y += shiftY;
-                        }
+                        let newCy = (pt1.y + pt2.y) / 2;
+                        let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
+                        let shiftY = newCy - oldCy;
+                        pts[target + '_h1'].y += shiftY;
+                        pts[target + '_h2'].y += shiftY;
                     }
 
                     showCup = true; showDisc = true; updateSegUI();
@@ -1538,6 +1518,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
                         let k = dragObj.key;
+                        
                         let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                         let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
