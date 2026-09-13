@@ -204,7 +204,6 @@
             <div class="action-item">
                 <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
             </div>
-            <!-- 新增復原按鈕 -->
             <div class="action-item">
                 <button class="action-btn" onclick="undo()" title="快捷鍵: Ctrl+Z 或 Cmd+Z">↩ 復原</button>
             </div>
@@ -238,7 +237,8 @@
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
                     <div>尺標</div>
-                    <div class="shortcut">滾輪+Ctrl</div>
+                    <!-- 修正：改為 Alt 防止 Mac 系統衝突 -->
+                    <div class="shortcut">滾輪+Alt</div>
                 </div>
                 <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
                 <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
@@ -304,13 +304,12 @@
         let caliperStart = null;
         let caliperEnd = null;
 
-        // 復原系統所需變數
         let historyStack = [];
-        let isStateSavedForCurrentAction = false; // 控制單次拖曳只記錄一次初始狀態
+        let isStateSavedForCurrentAction = false; 
 
+        // 阻擋原生右鍵選單，確保 Ctrl + 拖曳正常運作
         canvas.addEventListener('contextmenu', e => e.preventDefault());
 
-        // 監聽鍵盤快捷鍵：復原 (Ctrl+Z 或 Cmd+Z)
         window.addEventListener('keydown', e => {
             if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
                 e.preventDefault();
@@ -318,7 +317,6 @@
             }
         });
 
-        // 儲存狀態進歷史紀錄
         function saveState() {
             if (Object.keys(pts).length === 0) return; 
             let currentState = JSON.stringify({
@@ -327,18 +325,15 @@
                 aiFindings: aiFindings
             });
             
-            // 避免重複儲存一模一樣的連續狀態
             if (historyStack.length > 0 && historyStack[historyStack.length - 1] === currentState) {
                 return;
             }
             historyStack.push(currentState);
-            if (historyStack.length > 30) historyStack.shift(); // 最多保留 30 步
+            if (historyStack.length > 30) historyStack.shift(); 
         }
 
-        // 執行復原
         function undo() {
             if (historyStack.length > 0) {
-                // 強制中斷目前的拖曳或畫線狀態
                 dragObj = null; 
                 isDrawingCaliper = false; 
                 isDraggingCanvas = false;
@@ -458,7 +453,7 @@
                     infoBar.style.display = 'block';
                     rightControls.style.display = 'flex';
                     
-                    historyStack = []; // 換圖時清空復原歷史紀錄
+                    historyStack = []; 
                     showCup = false; showDisc = false; updateSegUI();
                     resetView();
                     setAIMode(false);
@@ -489,7 +484,7 @@
             loadingOverlay.style.display = 'flex';
             setAIMode(true); 
             
-            if (Object.keys(pts).length > 0) saveState(); // AI 執行前儲存狀態以便復原
+            if (Object.keys(pts).length > 0) saveState();
 
             aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 }; 
 
@@ -637,6 +632,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             document.getElementById('btnAll').classList.toggle('active-all', showCup && showDisc);
         }
 
+        // 修改 setCDRatio，避免影響顯示狀態的燈號
         function setCDRatio(ratioVal) {
             if (!isStateSavedForCurrentAction) {
                 saveState();
@@ -672,7 +668,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         sliderCD.addEventListener('touchstart', () => { isStateSavedForCurrentAction = false; }, {passive: true});
 
         function stepCD(direction) {
-            isStateSavedForCurrentAction = false; // 點擊按鈕強制作為新動作存檔
+            isStateSavedForCurrentAction = false; 
             let current = parseFloat(sliderCD.value);
             let newVal = direction > 0 ? Math.floor(current * 10 + 1.001) / 10 : Math.ceil(current * 10 - 1.001) / 10;
             if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
@@ -1108,6 +1104,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     }
 
                     if (target === 'd') {
+                        // 修正 1：畫完 Disc 後不改變當前燈號，直接用比例更新 Cup
                         setCDRatio(sliderCD.value);
                     } else {
                         calculateRatio();
@@ -1259,6 +1256,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             return null; 
         }
 
+        // 修正 2：更新滑鼠滾輪快捷鍵邏輯，防止與系統衝突
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
             let zoomFactor = e.deltaY > 0 ? 1.05 : 0.95; 
@@ -1266,7 +1264,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (e.shiftKey) { 
                 applyZoomImg(zoomFactor, mouseX, mouseY); imgZoom *= zoomFactor; sliderImg.value = imgZoom.toFixed(2);
-            } else if (e.ctrlKey || e.metaKey) { 
+            } else if (e.altKey) { // 改為 Alt (Mac的Option) 縮放尺標
                 applyZoomMkr(zoomFactor, mouseX, mouseY); mkrZoom *= zoomFactor; sliderMkr.value = mkrZoom.toFixed(2);
             } else { 
                 applyZoomImg(zoomFactor, mouseX, mouseY); applyZoomMkr(zoomFactor, mouseX, mouseY);
@@ -1285,7 +1283,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             dragObj = getHitTarget(mouseX, mouseY, false);
             
-            // 加入歷史紀錄的防重置鎖
             isStateSavedForCurrentAction = false;
             
             if (!dragObj) {
