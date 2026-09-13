@@ -204,7 +204,6 @@
             <div class="action-item">
                 <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
             </div>
-            <!-- 並列的復原與重做按鈕 -->
             <div class="action-item" style="gap: 6px;">
                 <button class="action-btn" onclick="undo()" title="快捷鍵: Ctrl+Z 或 Cmd+Z" style="flex: 1;">↩ 復原</button>
                 <button class="action-btn" onclick="redo()" title="快捷鍵: Ctrl+Y 或 Cmd+Shift+Z" style="flex: 1;">↪ 重做</button>
@@ -305,9 +304,8 @@
         let caliperStart = null;
         let caliperEnd = null;
 
-        // 復原系統所需變數
         let historyStack = [];
-        let redoStack = []; // 儲存重做的狀態
+        let redoStack = []; 
         let isStateSavedForCurrentAction = false; 
 
         canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -317,18 +315,17 @@
                 if (e.key === 'z' || e.key === 'Z') {
                     e.preventDefault();
                     if (e.shiftKey) {
-                        redo(); // Cmd+Shift+Z or Ctrl+Shift+Z
+                        redo(); 
                     } else {
-                        undo(); // Cmd+Z or Ctrl+Z
+                        undo(); 
                     }
                 } else if (e.key === 'y' || e.key === 'Y') {
                     e.preventDefault();
-                    redo(); // Ctrl+Y
+                    redo(); 
                 }
             }
         });
 
-        // 儲存狀態進歷史紀錄 (只要有新動作，就會清除重做堆疊)
         function saveState() {
             if (Object.keys(pts).length === 0) return; 
             let currentState = JSON.stringify({
@@ -343,17 +340,15 @@
             historyStack.push(currentState);
             if (historyStack.length > 30) historyStack.shift(); 
             
-            redoStack = []; // 清空重做堆疊
+            redoStack = []; 
         }
 
-        // 執行復原
         function undo() {
             if (historyStack.length > 0) {
                 dragObj = null; 
                 isDrawingCaliper = false; 
                 isDraggingCanvas = false;
                 
-                // 將目前狀態存入 redoStack
                 redoStack.push(JSON.stringify({
                     pts: pts,
                     sliderCD: sliderCD.value,
@@ -373,14 +368,12 @@
             }
         }
 
-        // 執行重做
         function redo() {
             if (redoStack.length > 0) {
                 dragObj = null; 
                 isDrawingCaliper = false; 
                 isDraggingCanvas = false;
 
-                // 將目前狀態存回 historyStack
                 historyStack.push(JSON.stringify({
                     pts: pts,
                     sliderCD: sliderCD.value,
@@ -1114,6 +1107,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }
 
+        // 修正 3：加入自動正交鎖定 (水平/垂直捕捉)
         function finishDrawingCaliper() {
             if (!isDrawingCaliper) return;
             isDrawingCaliper = false;
@@ -1121,14 +1115,18 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (caliperStart && caliperEnd) {
                 let dx = caliperEnd.x - caliperStart.x;
                 let dy = caliperEnd.y - caliperStart.y;
-                let len = Math.hypot(dx, dy);
+                let isHoriz = Math.abs(dx) > Math.abs(dy);
+                
+                let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
+                let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
+                
+                let len = Math.hypot(drawEndX - caliperStart.x, drawEndY - caliperStart.y);
 
                 if (len > 15 && (showDisc || showCup)) {
-                    let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
+                    let pt2 = {x: drawEndX, y: drawEndY};
 
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
@@ -1153,7 +1151,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     }
 
                     if (target === 'd') {
-                        // 修正 1：畫完 Disc 後不自動亮 Cup，只在背景連動修改尺寸
+                        // 畫完 Disc 會因為維持 C/D Ratio 連動改變 Cup 點，這裡強制切換回 ALL 顯示，讓使用者看到完整結果
+                        showCup = true; showDisc = true; updateSegUI();
                         setCDRatio(sliderCD.value);
                     } else {
                         calculateRatio();
@@ -1194,7 +1193,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             if (isDrawingCaliper && caliperStart && caliperEnd) {
                 ctx.save();
-                let isHoriz = Math.abs(caliperEnd.x - caliperStart.x) > Math.abs(caliperEnd.y - caliperStart.y);
+                let dx = caliperEnd.x - caliperStart.x;
+                let dy = caliperEnd.y - caliperStart.y;
+                let isHoriz = Math.abs(dx) > Math.abs(dy);
+                
+                // 動態正交鎖定
+                let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
+                let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
+
                 let isCup = (showCup && !showDisc);
                 let targetName = isCup ? 'Cup' : 'Disc';
                 let drawColor = isCup ? cColor : dColor; 
@@ -1202,14 +1208,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
                 ctx.beginPath();
                 ctx.moveTo(caliperStart.x, caliperStart.y);
-                ctx.lineTo(caliperEnd.x, caliperEnd.y);
+                ctx.lineTo(drawEndX, drawEndY);
                 ctx.lineWidth = 4;
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; 
                 ctx.stroke();
 
                 ctx.beginPath();
                 ctx.moveTo(caliperStart.x, caliperStart.y);
-                ctx.lineTo(caliperEnd.x, caliperEnd.y);
+                ctx.lineTo(drawEndX, drawEndY);
                 ctx.setLineDash([6, 4]);
                 ctx.lineWidth = 2;
                 ctx.strokeStyle = drawColor;
@@ -1220,14 +1226,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
                 
                 ctx.beginPath(); ctx.arc(caliperStart.x, caliperStart.y, 4, 0, Math.PI*2); ctx.fillStyle=drawColor; ctx.fill(); ctx.stroke();
-                ctx.beginPath(); ctx.arc(caliperEnd.x, caliperEnd.y, 4, 0, Math.PI*2); ctx.fillStyle=drawColor; ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.arc(drawEndX, drawEndY, 4, 0, Math.PI*2); ctx.fillStyle=drawColor; ctx.fill(); ctx.stroke();
                 
                 ctx.font = 'bold 14px sans-serif';
                 ctx.fillStyle = '#ffcc00';
                 ctx.textAlign = 'center';
                 ctx.shadowColor = 'rgba(0,0,0,0.8)';
                 ctx.shadowBlur = 4;
-                ctx.fillText(`設定 ${targetName} ${axisName}線`, caliperEnd.x, caliperEnd.y - 15);
+                ctx.fillText(`設定 ${targetName} ${axisName}線`, drawEndX, drawEndY - 15);
                 ctx.restore();
             }
 
