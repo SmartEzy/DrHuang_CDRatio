@@ -204,6 +204,10 @@
             <div class="action-item">
                 <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
             </div>
+            <!-- 新增復原按鈕 -->
+            <div class="action-item">
+                <button class="action-btn" onclick="undo()" title="快捷鍵: Ctrl+Z 或 Cmd+Z">↩ 復原</button>
+            </div>
             <div class="action-item">
                 <button class="action-btn" onclick="resetView()">置中</button>
             </div>
@@ -218,7 +222,6 @@
                     <div><span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span></div>
                 </div>
                 <button class="step-btn" onclick="stepCD(-1)">-</button>
-                <!-- 修正1：手動拖拉 Slider 才觸發顯示 ALL，並獨立出 onSliderCDInput 函式 -->
                 <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="onSliderCDInput(this.value)">
                 <button class="step-btn" onclick="stepCD(1)">+</button>
             </div>
@@ -301,8 +304,57 @@
         let caliperStart = null;
         let caliperEnd = null;
 
-        // 修正 2：阻擋 Canvas 上的原生右鍵選單，讓 Ctrl+點擊可以順利拉線
+        // 復原系統所需變數
+        let historyStack = [];
+        let isStateSavedForCurrentAction = false; // 控制單次拖曳只記錄一次初始狀態
+
         canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+        // 監聽鍵盤快捷鍵：復原 (Ctrl+Z 或 Cmd+Z)
+        window.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+                e.preventDefault();
+                undo();
+            }
+        });
+
+        // 儲存狀態進歷史紀錄
+        function saveState() {
+            if (Object.keys(pts).length === 0) return; 
+            let currentState = JSON.stringify({
+                pts: pts,
+                sliderCD: sliderCD.value,
+                aiFindings: aiFindings
+            });
+            
+            // 避免重複儲存一模一樣的連續狀態
+            if (historyStack.length > 0 && historyStack[historyStack.length - 1] === currentState) {
+                return;
+            }
+            historyStack.push(currentState);
+            if (historyStack.length > 30) historyStack.shift(); // 最多保留 30 步
+        }
+
+        // 執行復原
+        function undo() {
+            if (historyStack.length > 0) {
+                // 強制中斷目前的拖曳或畫線狀態
+                dragObj = null; 
+                isDrawingCaliper = false; 
+                isDraggingCanvas = false;
+                
+                let lastState = JSON.parse(historyStack.pop());
+                pts = lastState.pts;
+                sliderCD.value = lastState.sliderCD;
+                aiFindings = lastState.aiFindings;
+                
+                draw();
+                calculateRatio();
+                showTempAlert("↩ 已復原至上一步", 1500);
+            } else {
+                showTempAlert("沒有上一步可以復原", 1500);
+            }
+        }
 
         function setAIMode(active) {
             if (active) {
@@ -404,10 +456,9 @@
                     dropZone.style.display = 'none';
                     canvas.style.display = 'block';
                     infoBar.style.display = 'block';
-                    
                     rightControls.style.display = 'flex';
                     
-                    // 預設全熄燈，方便平移
+                    historyStack = []; // 換圖時清空復原歷史紀錄
                     showCup = false; showDisc = false; updateSegUI();
                     resetView();
                     setAIMode(false);
@@ -437,6 +488,9 @@
             document.querySelector('.loading-text').innerText = '⚡ 分析中... (' + displayModelName + ')';
             loadingOverlay.style.display = 'flex';
             setAIMode(true); 
+            
+            if (Object.keys(pts).length > 0) saveState(); // AI 執行前儲存狀態以便復原
+
             aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 }; 
 
             try {
@@ -491,7 +545,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (coords.disc && coords.cup) {
                     if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    systemMessage = "";
+                    systemMessage = ""; 
                     updateDashboard();
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
@@ -583,8 +637,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             document.getElementById('btnAll').classList.toggle('active-all', showCup && showDisc);
         }
 
-        // 修正 1：移除 setCDRatio 中強制切換顯示狀態的程式碼，確保使用者畫線時燈號不亂跳
         function setCDRatio(ratioVal) {
+            if (!isStateSavedForCurrentAction) {
+                saveState();
+                isStateSavedForCurrentAction = true;
+            }
+
             isUpdatingCD = true; 
             let targetV = parseFloat(ratioVal);
 
@@ -606,12 +664,15 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function onSliderCDInput(val) {
-            // 手動拖拉 Slider 才會強制顯示全部標線
             if (!showCup || !showDisc) { showCup = true; showDisc = true; updateSegUI(); }
             setCDRatio(val);
         }
 
+        sliderCD.addEventListener('mousedown', () => { isStateSavedForCurrentAction = false; });
+        sliderCD.addEventListener('touchstart', () => { isStateSavedForCurrentAction = false; }, {passive: true});
+
         function stepCD(direction) {
+            isStateSavedForCurrentAction = false; // 點擊按鈕強制作為新動作存檔
             let current = parseFloat(sliderCD.value);
             let newVal = direction > 0 ? Math.floor(current * 10 + 1.001) / 10 : Math.ceil(current * 10 - 1.001) / 10;
             if (newVal < parseFloat(sliderCD.min)) newVal = parseFloat(sliderCD.min);
@@ -775,6 +836,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function resetView() {
+            if (Object.keys(pts).length > 0) saveState();
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
             let discY = detected ? detected.y : img.height / 2;
@@ -1046,7 +1108,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     }
 
                     if (target === 'd') {
-                        // 畫 Disc 會連動 Cup 比例，但不會強制改變燈號顯示
                         setCDRatio(sliderCD.value);
                     } else {
                         calculateRatio();
@@ -1224,6 +1285,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             dragObj = getHitTarget(mouseX, mouseY, false);
             
+            // 加入歷史紀錄的防重置鎖
+            isStateSavedForCurrentAction = false;
+            
             if (!dragObj) {
                 if (e.shiftKey) {
                     showDisc = true; showCup = false; updateSegUI();
@@ -1251,9 +1315,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let mouseX = e.clientX; let mouseY = e.clientY;
             
             if (isDrawingCaliper) {
+                if (!isStateSavedForCurrentAction) { saveState(); isStateSavedForCurrentAction = true; }
                 caliperEnd = {x: mouseX, y: mouseY};
                 draw();
             } else if (dragObj) {
+                if (!isStateSavedForCurrentAction) { saveState(); isStateSavedForCurrentAction = true; }
+
                 if (dragObj.type === 'group') {
                     let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                     for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
@@ -1305,8 +1372,20 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 lastMouse = { x: tx, y: ty }; 
                 dragObj = getHitTarget(tx, ty, true);
                 
+                isStateSavedForCurrentAction = false;
+
                 if (!dragObj) {
-                    if (!showCup && !showDisc) {
+                    if (e.shiftKey) {
+                        showDisc = true; showCup = false; updateSegUI();
+                        isDrawingCaliper = true;
+                        caliperStart = {x: tx, y: ty};
+                        caliperEnd = {x: tx, y: ty};
+                    } else if (e.ctrlKey || e.metaKey) {
+                        showCup = true; showDisc = false; updateSegUI();
+                        isDrawingCaliper = true;
+                        caliperStart = {x: tx, y: ty};
+                        caliperEnd = {x: tx, y: ty};
+                    } else if (!showCup && !showDisc) {
                         isDraggingCanvas = true;
                     } else {
                         isDrawingCaliper = true;
@@ -1326,9 +1405,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (e.touches.length === 1 && lastMouse) {
                 let mouseX = e.touches[0].clientX; let mouseY = e.touches[0].clientY;
                 if (isDrawingCaliper) {
+                    if (!isStateSavedForCurrentAction) { saveState(); isStateSavedForCurrentAction = true; }
                     caliperEnd = {x: mouseX, y: mouseY};
                     draw();
                 } else if (dragObj) {
+                    if (!isStateSavedForCurrentAction) { saveState(); isStateSavedForCurrentAction = true; }
+                    
                     if (dragObj.type === 'group') {
                         let dx = mouseX - dragObj.lastX; let dy = mouseY - dragObj.lastY;
                         for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
