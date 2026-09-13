@@ -79,13 +79,10 @@
         .btn-cancel { background: #444; color: #fff; }
         .btn-cancel:active { transform: scale(0.95); background: #333; }
 
-        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; flex-direction: column; align-items: flex-end; gap: 12px; z-index: 10; pointer-events: none; }
+        /* 整合後的單一控制面板 */
+        #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; z-index: 10; pointer-events: none; }
+        .panel-box { background: rgba(0,0,0,0.75); padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; width: 145px; gap: 8px; }
         
-        .panel-box { background: rgba(0,0,0,0.75); padding: 14px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; }
-        
-        #actionPanel { width: 140px; padding: 12px; gap: 10px; align-items: stretch; }
-        #sliderPanel { gap: 12px; display: flex; flex-direction: column; }
-
         .action-item { display: flex; align-items: center; justify-content: center; height: 28px; width: 100%; box-sizing: border-box; }
         
         .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0; border-radius: 8px; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-weight: bold; transition: 0.1s; text-align: center; height: 100%; line-height: 26px; width: 100%; box-sizing: border-box; }
@@ -105,23 +102,17 @@
         .seg-btn.active-all { background: rgba(255, 255, 255, 0.15); color: #fff; box-shadow: inset 0 -3px 0 #ccc; }
         .seg-btn:active { transform: scale(0.90); }
 
-        .ctrl-group { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
-        .ctrl-lbl { color: #ddd; font-size: 0.95rem; width: 68px; text-align: left; font-weight: bold; margin-right: 2px; flex-shrink: 0; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; }
-        .shortcut { font-size: 0.65rem; color: #999; font-weight: normal; margin-top: 2px; letter-spacing: 0; white-space: nowrap; }
-        
-        .step-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; flex-shrink: 0; }
-        .step-btn:hover { background: rgba(255,255,255,0.25); }
+        .step-btn { background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 6px; width: 28px; height: 26px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; padding: 0; font-weight: bold; }
+        .step-btn:hover { background: rgba(255,255,255,0.3); }
         .step-btn:active { transform: scale(0.9); background: #4cd964; color: #111; }
         
-        .divider { height: 1px; background: #555; margin: 2px 0; width: 100%; }
+        .divider { height: 1px; background: #555; width: 100%; margin: 0; }
 
-        input[type=range] { -webkit-appearance: none; width: 65px; background: transparent; margin: 0 2px; }
-        input[type=range]:focus { outline: none; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; margin-top: -5px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: 0.1s; }
-        input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); background: #fff; }
-        input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: #444; border-radius: 3px; }
-        input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+        /* 新增：純文字說明列表的排版 */
+        .shortcut-list { display: flex; flex-direction: column; gap: 5px; padding: 2px 4px; }
+        .shortcut-row { display: flex; justify-content: space-between; align-items: center; }
+        .shortcut-row .s-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
+        .shortcut-row .s-key { font-size: 0.7rem; color: #999; }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
@@ -135,10 +126,8 @@
             #infoBar { top: 15px; left: 50%; right: auto; transform: translateX(-50%); font-size: 1rem; padding: 6px 12px; }
             #statusDashboard { top: 60px; font-size: 0.85rem; padding: 8px 14px; }
             
-            #rightControls { right: 15px; bottom: 20px; gap: 8px; }
-            .panel-box { padding: 12px; border-radius: 12px; }
-            #actionPanel { width: 130px; padding: 10px; } 
-            input[type=range] { width: 55px; margin: 0; }
+            #rightControls { right: 15px; bottom: 20px; }
+            .panel-box { width: 135px; padding: 10px; gap: 8px; }
         }
     </style>
 </head>
@@ -196,8 +185,9 @@
     
     <div id="statusDashboard"></div>
 
+    <!-- 整合後的全新右下角面板 -->
     <div id="rightControls">
-        <div class="panel-box" id="actionPanel">
+        <div class="panel-box" id="mainPanel">
             <div class="action-item seg-group">
                 <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')" title="快捷鍵: Ctrl+拖曳畫線">
                     <span>Cup</span><span class="seg-hint">Ctrl</span>
@@ -209,59 +199,51 @@
                     <span>ALL</span><span class="seg-hint" style="opacity: 0;">-</span>
                 </button>
             </div>
+            
             <div class="action-item">
                 <button id="btnAI" class="action-btn action-btn-ai" onclick="runAILocalization()">✨ AI mode</button>
             </div>
+            
             <div class="action-item" style="gap: 6px;">
                 <button class="action-btn" onclick="undo()" title="快捷鍵: Ctrl+Z 或 Cmd+Z" style="flex: 1;">↩ 復原</button>
                 <button class="action-btn" onclick="redo()" title="快捷鍵: Ctrl+Y 或 Cmd+Shift+Z" style="flex: 1;">↪ 重做</button>
             </div>
+            
             <div class="action-item" style="gap: 6px;">
                 <button class="action-btn" onclick="resetView()" style="flex: 1;">置中</button>
                 <button class="action-btn" onclick="document.getElementById('fileInput').click()" style="flex: 1;">換圖</button>
             </div>
-        </div>
 
-        <div class="panel-box" id="sliderPanel">
-            <div class="ctrl-group">
-                <div class="ctrl-lbl">
-                    <div><span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span></div>
-                </div>
-                <button class="step-btn" onclick="stepCD(-1)">-</button>
-                <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="onSliderCDInput(this.value)">
-                <button class="step-btn" onclick="stepCD(1)">+</button>
-            </div>
             <div class="divider"></div>
-            <div class="ctrl-group">
-                <div class="ctrl-lbl">
-                    <div>圖片</div>
-                    <div class="shortcut">滾輪+Shift</div>
+
+            <!-- C/D 控制區 (移除滑桿) -->
+            <div class="action-item" style="justify-content: space-between; padding: 0 4px; height: 32px;">
+                <div style="font-weight: bold; font-size: 1.05rem;">
+                    <span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span>
                 </div>
-                <button class="step-btn" onclick="stepZoom('Img', -0.2)">-</button>
-                <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
-                <button class="step-btn" onclick="stepZoom('Img', 0.2)">+</button>
-            </div>
-            <div class="ctrl-group">
-                <div class="ctrl-lbl">
-                    <div>尺標</div>
-                    <div class="shortcut">滾輪+Alt</div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="step-btn" onclick="stepCD(-1)">-</button>
+                    <button class="step-btn" onclick="stepCD(1)">+</button>
                 </div>
-                <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
-                <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
-                <button class="step-btn" onclick="stepZoom('Mkr', 0.2)">+</button>
             </div>
-            <div class="ctrl-group">
-                <div class="ctrl-lbl">
-                    <div>同步</div>
-                    <div class="shortcut">滾輪</div>
-                </div>
-                <button class="step-btn" onclick="stepZoom('All', -0.2)">-</button>
-                <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
-                <button class="step-btn" onclick="stepZoom('All', 0.2)">+</button>
+
+            <div class="divider"></div>
+
+            <!-- 純文字快捷鍵說明 -->
+            <div class="shortcut-list">
+                <div class="shortcut-row"><span class="s-title">圖片</span><span class="s-key">滾輪+Shift</span></div>
+                <div class="shortcut-row"><span class="s-title">尺標</span><span class="s-key">滾輪+Alt</span></div>
+                <div class="shortcut-row"><span class="s-title">同步</span><span class="s-key">滾輪</span></div>
+                <div class="shortcut-row"><span class="s-title">對稱</span><span class="s-key">🖱️+Alt</span></div>
             </div>
-            <div style="text-align: right; color: #999; font-size: 0.7rem; margin-top: -6px; padding-right: 2px;">
-                對稱 🖱️+Alt
-            </div>
+        </div>
+        
+        <!-- 隱藏的拉桿：完美保留原有的底層邏輯與縮放記憶，不破壞架構 -->
+        <div style="display: none;">
+            <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="onSliderCDInput(this.value)">
+            <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
+            <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
+            <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
         </div>
     </div>
 
@@ -1072,15 +1054,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             let center = getCenter();
             context.save();
-            
-            // 修正：依據您的建議，將中心點改為極簡的單一圓圈
             context.beginPath(); 
             context.arc(center.x, center.y, 6, 0, Math.PI*2);
-            // 填滿半透明深灰色，在亮底色上可見
             context.fillStyle = 'rgba(40, 40, 40, 0.6)'; 
             context.fill();
             
-            // 加上清晰的白框
             context.lineWidth = 1.5;
             context.strokeStyle = '#ffffff';
             context.stroke();
@@ -1137,11 +1115,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (len > 15 && (showDisc || showCup)) {
                     let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
+                    let otherTarget = target === 'd' ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
                     let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
 
-                    // 使用正交鎖定座標存檔
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
