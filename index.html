@@ -197,8 +197,8 @@
     <div id="rightControls">
         <div class="panel-box" id="actionPanel">
             <div class="action-item seg-group">
-                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')">Cup</button>
-                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')">Disc</button>
+                <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')" title="快捷鍵: Ctrl+拖曳畫線">Cup</button>
+                <button id="btnDisc" class="seg-btn" onclick="toggleSeg('Disc')" title="快捷鍵: Shift+拖曳畫線">Disc</button>
                 <button id="btnAll" class="seg-btn" onclick="toggleSeg('All')">ALL</button>
             </div>
             <div class="action-item">
@@ -225,7 +225,7 @@
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
                     <div>圖片</div>
-                    <div class="shortcut">🖱️+Shift</div>
+                    <div class="shortcut">滾輪+Shift</div>
                 </div>
                 <button class="step-btn" onclick="stepZoom('Img', -0.2)">-</button>
                 <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
@@ -234,7 +234,7 @@
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
                     <div>尺標</div>
-                    <div class="shortcut">🖱️+Ctrl</div>
+                    <div class="shortcut">滾輪+Ctrl</div>
                 </div>
                 <button class="step-btn" onclick="stepZoom('Mkr', -0.2)">-</button>
                 <input type="range" id="sliderMkr" min="0.1" max="15.0" step="0.01" value="1.0">
@@ -243,7 +243,7 @@
             <div class="ctrl-group">
                 <div class="ctrl-lbl">
                     <div>同步</div>
-                    <div class="shortcut">🖱️</div>
+                    <div class="shortcut">滾輪</div>
                 </div>
                 <button class="step-btn" onclick="stepZoom('All', -0.2)">-</button>
                 <input type="range" id="sliderAll" min="0.1" max="15.0" step="0.01" value="1.0">
@@ -287,7 +287,9 @@
         
         let dragObj = null; let isDraggingCanvas = false; let lastMouse = {x: 0, y: 0}; let lastTouchDist = 0;
         let isTouchMode = false; let lastTouchTime = 0; let isUpdatingCD = false; 
-        let showCup = false; let showDisc = true;  
+        
+        // 載入預設關閉
+        let showCup = false; let showDisc = false;  
         
         let aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 };
         let abortController = null; 
@@ -402,7 +404,8 @@
                     
                     rightControls.style.display = 'flex';
                     
-                    showCup = false; showDisc = true; updateSegUI();
+                    // 預設關閉所有標線，方便直接拖拉平移圖片
+                    showCup = false; showDisc = false; updateSegUI();
                     resetView();
                     setAIMode(false);
                     aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 };
@@ -485,7 +488,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (coords.disc && coords.cup) {
                     if (coords.findings) aiFindings = coords.findings;
                     applyAICoordinates(coords);
-                    systemMessage = "";
+                    systemMessage = ""; // 靜默定位，不顯示冗餘訊息
                     updateDashboard();
                 } else {
                     throw new Error('回傳的 JSON 缺少 disc 或 cup 座標');
@@ -555,6 +558,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             sliderMkr.value = mkrZoom.toFixed(2);
             sliderAll.value = allZoom.toFixed(2);
 
+            // AI 定位完成後自動顯示全部標線
             showCup = true; showDisc = true; updateSegUI(); draw();
             setAIMode(true);
         }
@@ -580,6 +584,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         function setCDRatio(ratioVal) {
             isUpdatingCD = true; 
             let targetV = parseFloat(ratioVal);
+            // 改動 slider 時，如果都沒開，強制開啟
             if (!showCup || !showDisc) { showCup = true; showDisc = true; updateSegUI(); }
 
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y);
@@ -1045,7 +1050,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             caliperEnd = null;
         }
 
-        // 修正：將畫線的深色外框改為「白色邊緣」，解決過黑不明顯的問題
         function draw() {
             const dpr = window.devicePixelRatio || 1;
             let w = window.innerWidth;
@@ -1081,7 +1085,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 let drawColor = isCup ? cColor : dColor; 
                 let axisName = isHoriz ? '水平' : '垂直';
 
-                // 底下的白色邊緣，增加對比亮度
                 ctx.beginPath();
                 ctx.moveTo(caliperStart.x, caliperStart.y);
                 ctx.lineTo(caliperEnd.x, caliperEnd.y);
@@ -1089,7 +1092,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; 
                 ctx.stroke();
 
-                // 彩色的虛線主體
                 ctx.beginPath();
                 ctx.moveTo(caliperStart.x, caliperStart.y);
                 ctx.lineTo(caliperEnd.x, caliperEnd.y);
@@ -1098,7 +1100,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 ctx.strokeStyle = drawColor;
                 ctx.stroke();
 
-                // 端點的白色外框圓圈
                 ctx.setLineDash([]);
                 ctx.lineWidth = 1.5;
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
@@ -1215,13 +1216,27 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             dragObj = getHitTarget(mouseX, mouseY, false);
             
-            // 修正 2：如果 Cup/Disc 都沒亮 (ALL off)，那就直接進入拖曳圖片模式
-            if (!dragObj && (showCup || showDisc) && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                isDrawingCaliper = true;
-                caliperStart = {x: mouseX, y: mouseY};
-                caliperEnd = {x: mouseX, y: mouseY};
-            } else if (!dragObj) {
-                isDraggingCanvas = true;
+            // 修正 2：觸發快捷鍵自動切換燈號並進入畫線模式
+            if (!dragObj) {
+                if (e.shiftKey) {
+                    showDisc = true; showCup = false; updateSegUI();
+                    isDrawingCaliper = true;
+                    caliperStart = {x: mouseX, y: mouseY};
+                    caliperEnd = {x: mouseX, y: mouseY};
+                } else if (e.ctrlKey || e.metaKey) {
+                    showCup = true; showDisc = false; updateSegUI();
+                    isDrawingCaliper = true;
+                    caliperStart = {x: mouseX, y: mouseY};
+                    caliperEnd = {x: mouseX, y: mouseY};
+                } else if (!showCup && !showDisc) {
+                    // 若沒有按快捷鍵，且燈都沒亮 -> 平移畫布
+                    isDraggingCanvas = true;
+                } else {
+                    // 有亮燈卻沒按快捷鍵，單純拖曳空白處，也可以進入畫線
+                    isDrawingCaliper = true;
+                    caliperStart = {x: mouseX, y: mouseY};
+                    caliperEnd = {x: mouseX, y: mouseY};
+                }
             }
             draw();
         });
@@ -1263,10 +1278,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
             } else if (isDraggingCanvas) {
+                // 平移畫布模式，一律移動圖片 (連同可能藏在背後的隱形控制點一起平移)
                 let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
-                if (e.shiftKey) { transform.x += dx; transform.y += dy; } 
-                else if (e.ctrlKey || e.metaKey) { for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } } 
-                else { transform.x += dx; transform.y += dy; for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } }
+                transform.x += dx; transform.y += dy; 
+                for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
             }
@@ -1286,12 +1301,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 lastMouse = { x: tx, y: ty }; 
                 dragObj = getHitTarget(tx, ty, true);
                 
-                if (!dragObj && (showCup || showDisc) && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                    isDrawingCaliper = true;
-                    caliperStart = {x: tx, y: ty};
-                    caliperEnd = {x: tx, y: ty};
-                } else if (!dragObj) {
-                    isDraggingCanvas = true;
+                if (!dragObj) {
+                    if (!showCup && !showDisc) {
+                        isDraggingCanvas = true;
+                    } else {
+                        isDrawingCaliper = true;
+                        caliperStart = {x: tx, y: ty};
+                        caliperEnd = {x: tx, y: ty};
+                    }
                 }
                 draw(); 
             } else if (e.touches.length === 2) {
@@ -1337,9 +1354,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     lastMouse = { x: mouseX, y: mouseY }; draw();
                 } else if (isDraggingCanvas) {
                     let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
-                    if (e.shiftKey) { transform.x += dx; transform.y += dy; } 
-                    else if (e.ctrlKey || e.metaKey) { for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } } 
-                    else { transform.x += dx; transform.y += dy; for (let key in pts) { pts[key].x += dx; pts[key].y += dy; } }
+                    transform.x += dx; transform.y += dy; 
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
                     lastMouse = { x: mouseX, y: mouseY }; draw();
                 }
             } else if (e.touches.length === 2) {
