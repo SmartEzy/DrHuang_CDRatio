@@ -79,7 +79,6 @@
         .btn-cancel { background: #444; color: #fff; }
         .btn-cancel:active { transform: scale(0.95); background: #333; }
 
-        /* 整合後的單一控制面板 */
         #rightControls { display: none; position: absolute; right: 20px; bottom: 20px; z-index: 10; pointer-events: none; }
         .panel-box { background: rgba(0,0,0,0.75); padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; flex-direction: column; box-sizing: border-box; pointer-events: auto; width: 145px; gap: 8px; }
         
@@ -108,11 +107,11 @@
         
         .divider { height: 1px; background: #555; width: 100%; margin: 0; }
 
-        /* 新增：純文字說明列表的排版 */
+        /* 更新排版：讓快捷鍵的文字靠左並精準對齊負號 */
         .shortcut-list { display: flex; flex-direction: column; gap: 5px; padding: 2px 4px; }
         .shortcut-row { display: flex; justify-content: space-between; align-items: center; }
         .shortcut-row .s-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
-        .shortcut-row .s-key { font-size: 0.7rem; color: #999; }
+        .shortcut-row .s-key { font-size: 0.68rem; color: #999; width: 64px; text-align: left; white-space: nowrap; letter-spacing: -0.3px; }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
@@ -185,7 +184,6 @@
     
     <div id="statusDashboard"></div>
 
-    <!-- 整合後的全新右下角面板 -->
     <div id="rightControls">
         <div class="panel-box" id="mainPanel">
             <div class="action-item seg-group">
@@ -216,12 +214,12 @@
 
             <div class="divider"></div>
 
-            <!-- C/D 控制區 (移除滑桿) -->
             <div class="action-item" style="justify-content: space-between; padding: 0 4px; height: 32px;">
                 <div style="font-weight: bold; font-size: 1.05rem;">
                     <span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span>
                 </div>
-                <div style="display: flex; gap: 8px;">
+                <!-- 給按鈕群組設定固定寬度，用以對齊下方的說明文字 -->
+                <div style="display: flex; gap: 8px; width: 64px;">
                     <button class="step-btn" onclick="stepCD(-1)">-</button>
                     <button class="step-btn" onclick="stepCD(1)">+</button>
                 </div>
@@ -229,7 +227,6 @@
 
             <div class="divider"></div>
 
-            <!-- 純文字快捷鍵說明 -->
             <div class="shortcut-list">
                 <div class="shortcut-row"><span class="s-title">圖片</span><span class="s-key">滾輪+Shift</span></div>
                 <div class="shortcut-row"><span class="s-title">尺標</span><span class="s-key">滾輪+Alt</span></div>
@@ -238,7 +235,6 @@
             </div>
         </div>
         
-        <!-- 隱藏的拉桿：完美保留原有的底層邏輯與縮放記憶，不破壞架構 -->
         <div style="display: none;">
             <input type="range" id="sliderCD" min="0.05" max="1.00" step="0.01" value="0.50" oninput="onSliderCDInput(this.value)">
             <input type="range" id="sliderImg" min="0.1" max="15.0" step="0.01" value="1.0">
@@ -1460,6 +1456,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
                         let k = dragObj.key;
+                        
                         let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                         let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
