@@ -91,7 +91,6 @@
         .action-btn-ai.ai-active { color: #fff; font-weight: bold; text-shadow: 0 0 5px rgba(255,255,255,0.4); box-shadow: 0 0 8px rgba(74, 144, 226, 0.4); }
         .action-btn-ai:active { background: #1e3c72; }
 
-        /* 修正 3: 將 Ctrl/Shift 移至框外下方，重構按鈕容器 */
         .seg-container { display: flex; flex-direction: column; width: 100%; gap: 4px; }
         .seg-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #555; background: #222; height: 28px; width: 100%; }
         .seg-btn { flex: 1; display: flex; justify-content: center; align-items: center; background: transparent; color: #888; border: none; padding: 0; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; border-right: 1px solid #444; }
@@ -114,7 +113,6 @@
         .shortcut-row .s-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
         .shortcut-row .s-key { font-size: 0.68rem; color: #999; width: 64px; text-align: left; white-space: nowrap; letter-spacing: -0.3px; }
         
-        /* 修正 1: 讓尺標按鈕看起來像純文字並與上方對齊 */
         .text-btn { background: transparent; border: none; color: #ddd; font-size: 0.85rem; font-weight: bold; padding: 0; cursor: pointer; text-align: left; font-family: inherit; transition: color 0.2s; line-height: 1; }
         .text-btn:hover { color: #4cd964; text-decoration: underline; }
         .text-btn:active { transform: scale(0.95); }
@@ -193,7 +191,6 @@
     <div id="rightControls">
         <div class="panel-box" id="mainPanel">
             
-            <!-- 修正 3：Ctrl / Shift 完美外置下方 -->
             <div class="seg-container">
                 <div class="seg-group">
                     <button id="btnCup" class="seg-btn" onclick="toggleSeg('Cup')" title="快捷鍵: Ctrl+拖曳畫線">Cup</button>
@@ -240,7 +237,6 @@
                     <span class="s-title">圖片</span>
                     <span class="s-key">滾輪+Shift</span>
                 </div>
-                <!-- 修正 1：改用 text-btn 類別，純文字視覺，完美靠左對齊 -->
                 <div class="shortcut-row">
                     <button class="text-btn" onclick="generateDefaultMarkers()" title="點擊生成預設尺標">尺標</button>
                     <span class="s-key">滾輪+Alt</span>
@@ -415,7 +411,6 @@
             }
         }
 
-        // 小括號修正
         function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-1.5-flash'; }
 
@@ -826,12 +821,15 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
 
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
-            let vRatio = (discV === 0) ? 0 : (cupV / discV); let hRatio = (discH === 0) ? 0 : (cupH / discH);
+            
+            // 防呆：如果某個長度低於 1px，就視為未標記 (0)，避免除以極小值產生異常
+            let vRatio = (discV < 1) ? 0 : (cupV / discV); 
+            let hRatio = (discH < 1) ? 0 : (cupH / discH);
             
             document.getElementById('vRatio').innerText = vRatio.toFixed(2);
             document.getElementById('hRatio').innerText = hRatio.toFixed(2);
 
-            if(!isUpdatingCD && document.activeElement !== sliderCD) {
+            if(!isUpdatingCD && document.activeElement !== sliderCD && vRatio > 0) {
                 sliderCD.value = vRatio.toFixed(2);
             }
             updateDashboard(); 
@@ -1128,10 +1126,11 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             for (let key in pts) {
                 let partnerKey = key.endsWith('1') ? key.slice(0,-1)+'2' : key.slice(0,-1)+'1';
                 let len2 = sqr(pts[key].x - pts[partnerKey].x) + sqr(pts[key].y - pts[partnerKey].y);
-                if (len2 < 1) continue; 
-
-                if (key.startsWith('d_') && showDisc) drawDash(pts[key], key, dColor);
-                if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
+                // 只有長度大於 1px 才繪製端點的小橫線
+                if (len2 > 1) {
+                    if (key.startsWith('d_') && showDisc) drawDash(pts[key], key, dColor);
+                    if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
+                }
             }
             
             let center = getCenter();
@@ -1189,7 +1188,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }
 
-        // 修正 2：修改無中生有邏輯，只針對正在畫的那一個顏色生成十字，絕不干擾另一個顏色
         function finishDrawingCaliper() {
             if (!isDrawingCaliper) return;
             isDrawingCaliper = false;
@@ -1206,7 +1204,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
                     let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
 
-                    // 若為空白畫布，將所有點預設在中心點(長度0隱藏)
+                    // 修正 3：無中生有時，只設定初始點於中心，所有長度均為 0 (不預設長度)
                     if (Object.keys(pts).length === 0) {
                         let cx = (caliperStart.x + drawEndX) / 2;
                         let cy = (caliperStart.y + drawEndY) / 2;
@@ -1223,6 +1221,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     
                     let oldC = getCenter();
 
+                    // 修正 3：只更新滑鼠拉的那「一條線」，並連動平移所有點維持十字中心不變
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         
@@ -1239,15 +1238,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                             pts[k].x += shiftX;
                             pts[k].y += shiftY;
                         }
-
-                        // 只針對「同顏色」的另一個軸自動長出長度，完美形成十字，另一個顏色維持隱藏 0 長度！
-                        let vLen2 = sqr(pts[target + '_v1'].x - pts[target + '_v2'].x) + sqr(pts[target + '_v1'].y - pts[target + '_v2'].y);
-                        if (vLen2 < 1) {
-                            let r = Math.abs(pt2.x - pt1.x) / 2;
-                            pts[target + '_v1'].y -= r;
-                            pts[target + '_v2'].y += r;
-                        }
-
                     } else {
                         if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         
@@ -1264,26 +1254,16 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                             pts[k].x += shiftX;
                             pts[k].y += shiftY;
                         }
-
-                        // 只針對「同顏色」的另一個軸自動長出長度
-                        let hLen2 = sqr(pts[target + '_h1'].x - pts[target + '_h2'].x) + sqr(pts[target + '_h1'].y - pts[target + '_h2'].y);
-                        if (hLen2 < 1) {
-                            let r = Math.abs(pt2.y - pt1.y) / 2;
-                            pts[target + '_h1'].x -= r;
-                            pts[target + '_h2'].x += r;
-                        }
                     }
                     
-                    // 修正 2：不強制開啟另一個顏色的燈號，也不再強制去推算另一個顏色的長度
                     if (target === 'd') {
                         showDisc = true; 
-                        calculateRatio(); // 純粹更新數據
                     } else {
-                        showCup = true;  
-                        calculateRatio(); // 純粹更新數據
+                        showCup = true; 
                     }
                     
                     updateSegUI();
+                    calculateRatio();
                     setAIMode(false);
                 }
             }
