@@ -1064,23 +1064,26 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (key.startsWith('c_') && showCup) drawDash(pts[key], key, cColor);
             }
             
-            // 修正：在白色圓心加入黑框底色與實心圓點準星，解決高亮背景下看不清楚的問題
             let center = getCenter();
             context.save();
-            context.beginPath(); context.arc(center.x, center.y, 8, 0, Math.PI*2);
-            context.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            // 修正 1：重新設計「絕對防跟丟」的雙層高對比黑白輪廓與實心十字圓心
+            context.beginPath(); context.arc(center.x, center.y, 7, 0, Math.PI*2);
+            context.fillStyle = 'rgba(255, 255, 255, 0.4)'; // 半透明底
             context.fill();
             
-            context.lineWidth = 3.5;
-            context.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+            // 外層粗黑灰框
+            context.lineWidth = 3;
+            context.strokeStyle = 'rgba(0, 0, 0, 0.7)';
             context.stroke();
             
-            context.lineWidth = 1.5;
+            // 內層細白框
+            context.lineWidth = 1;
             context.strokeStyle = '#fff';
             context.stroke();
 
-            context.beginPath(); context.arc(center.x, center.y, 1.5, 0, Math.PI*2);
-            context.fillStyle = '#333';
+            // 中心實心準星小黑點
+            context.beginPath(); context.arc(center.x, center.y, 2, 0, Math.PI*2);
+            context.fillStyle = 'rgba(0, 0, 0, 0.8)';
             context.fill();
             context.restore();
 
@@ -1129,14 +1132,19 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (caliperStart && caliperEnd) {
                 let dx = caliperEnd.x - caliperStart.x;
                 let dy = caliperEnd.y - caliperStart.y;
-                let len = Math.hypot(dx, dy);
+                let isHoriz = Math.abs(dx) > Math.abs(dy);
+                
+                let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
+                let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
+
+                let len = Math.hypot(drawEndX - caliperStart.x, drawEndY - caliperStart.y);
 
                 if (len > 15 && (showDisc || showCup)) {
-                    let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
+                    let otherTarget = target === 'd' ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
+                    let pt2 = {x: drawEndX, y: drawEndY};
 
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
@@ -1144,23 +1152,43 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt2.y;
 
                         let newCx = (pt1.x + pt2.x) / 2;
+                        let newCy = pt1.y;
                         let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
+                        let oldCy = (pts[target + '_v1'].y + pts[target + '_v2'].y) / 2;
                         let shiftX = newCx - oldCx;
-                        pts[target + '_v1'].x += shiftX;
-                        pts[target + '_v2'].x += shiftX;
+                        let shiftY = newCy - oldCy;
+                        
+                        pts[target + '_v1'].x += shiftX; pts[target + '_v1'].y += shiftY;
+                        pts[target + '_v2'].x += shiftX; pts[target + '_v2'].y += shiftY;
+                        
+                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
+                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
+                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
+                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
                     } else {
                         if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
                         pts[target + '_v2'].x = pt2.x; pts[target + '_v2'].y = pt2.y;
 
+                        let newCx = pt1.x;
                         let newCy = (pt1.y + pt2.y) / 2;
+                        let oldCx = (pts[target + '_h1'].x + pts[target + '_h2'].x) / 2;
                         let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
+                        let shiftX = newCx - oldCx;
                         let shiftY = newCy - oldCy;
-                        pts[target + '_h1'].y += shiftY;
-                        pts[target + '_h2'].y += shiftY;
+                        
+                        pts[target + '_h1'].x += shiftX; pts[target + '_h1'].y += shiftY;
+                        pts[target + '_h2'].x += shiftX; pts[target + '_h2'].y += shiftY;
+
+                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
+                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
+                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
+                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
                     }
 
                     if (target === 'd') {
+                        // 畫完 Disc 會因為維持 C/D Ratio 連動改變 Cup 點，這裡強制切換回 ALL 顯示
+                        showCup = true; showDisc = true; updateSegUI();
                         setCDRatio(sliderCD.value);
                     } else {
                         calculateRatio();
@@ -1386,8 +1414,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     setAIMode(false); 
                 } else if (dragObj.type === 'point') {
                     let k = dragObj.key;
-                    let dx = mouseX - dragObj.pt.x;
-                    let dy = mouseY - dragObj.pt.y;
+                    let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
+                    let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
                     dragObj.pt.x += dx;
                     dragObj.pt.y += dy;
@@ -1476,8 +1504,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
                         let k = dragObj.key;
-                        let dx = mouseX - dragObj.pt.x;
-                        let dy = mouseY - dragObj.pt.y;
+                        let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
+                        let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
                         dragObj.pt.x += dx;
                         dragObj.pt.y += dy;
