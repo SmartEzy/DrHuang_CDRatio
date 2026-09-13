@@ -1121,7 +1121,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }
 
-        // 修正 1：畫完線後，自動亮起 ALL 狀態 (包含 Cup 分支)
         function finishDrawingCaliper() {
             if (!isDrawingCaliper) return;
             isDrawingCaliper = false;
@@ -1129,14 +1128,20 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (caliperStart && caliperEnd) {
                 let dx = caliperEnd.x - caliperStart.x;
                 let dy = caliperEnd.y - caliperStart.y;
-                let len = Math.hypot(dx, dy);
+                let isHoriz = Math.abs(dx) > Math.abs(dy);
+                
+                // 修正：將「視覺預覽的正交鎖定座標」真正套用到存檔階段
+                let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
+                let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
+
+                let len = Math.hypot(drawEndX - caliperStart.x, drawEndY - caliperStart.y);
 
                 if (len > 15 && (showDisc || showCup)) {
-                    let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
+                    let otherTarget = target === 'd' ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
+                    let pt2 = {x: drawEndX, y: drawEndY}; // 這裡使用修正後的正交座標
 
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
@@ -1144,20 +1149,38 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt2.y;
 
                         let newCx = (pt1.x + pt2.x) / 2;
+                        let newCy = pt1.y;
                         let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
+                        let oldCy = (pts[target + '_v1'].y + pts[target + '_v2'].y) / 2;
                         let shiftX = newCx - oldCx;
-                        pts[target + '_v1'].x += shiftX;
-                        pts[target + '_v2'].x += shiftX;
+                        let shiftY = newCy - oldCy;
+                        
+                        pts[target + '_v1'].x += shiftX; pts[target + '_v1'].y += shiftY;
+                        pts[target + '_v2'].x += shiftX; pts[target + '_v2'].y += shiftY;
+                        
+                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
+                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
+                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
+                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
                     } else {
                         if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
                         pts[target + '_v2'].x = pt2.x; pts[target + '_v2'].y = pt2.y;
 
+                        let newCx = pt1.x;
                         let newCy = (pt1.y + pt2.y) / 2;
+                        let oldCx = (pts[target + '_h1'].x + pts[target + '_h2'].x) / 2;
                         let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
+                        let shiftX = newCx - oldCx;
                         let shiftY = newCy - oldCy;
-                        pts[target + '_h1'].y += shiftY;
-                        pts[target + '_h2'].y += shiftY;
+                        
+                        pts[target + '_h1'].x += shiftX; pts[target + '_h1'].y += shiftY;
+                        pts[target + '_h2'].x += shiftX; pts[target + '_h2'].y += shiftY;
+
+                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
+                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
+                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
+                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
                     }
 
                     if (target === 'd') {
@@ -1388,6 +1411,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     setAIMode(false); 
                 } else if (dragObj.type === 'point') {
                     let k = dragObj.key;
+                    
+                    // 防呆鎖定：確保端點只能在自己的軸上移動，絕對不會被拉歪
                     let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                     let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
@@ -1478,6 +1503,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
                         let k = dragObj.key;
+                        
+                        // 觸控模式的防呆鎖定
                         let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                         let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
