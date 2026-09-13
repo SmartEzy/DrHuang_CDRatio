@@ -107,7 +107,6 @@
         
         .divider { height: 1px; background: #555; width: 100%; margin: 0; }
 
-        /* 更新排版：讓快捷鍵的文字靠左並精準對齊負號 */
         .shortcut-list { display: flex; flex-direction: column; gap: 5px; padding: 2px 4px; }
         .shortcut-row { display: flex; justify-content: space-between; align-items: center; }
         .shortcut-row .s-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
@@ -208,7 +207,8 @@
             </div>
             
             <div class="action-item" style="gap: 6px;">
-                <button class="action-btn" onclick="resetView()" style="flex: 1;">置中</button>
+                <!-- 修正：將按鈕名稱改為「預設標記」以符合新的操作邏輯 -->
+                <button class="action-btn" onclick="resetView()" style="flex: 1;">預設標記</button>
                 <button class="action-btn" onclick="document.getElementById('fileInput').click()" style="flex: 1;">換圖</button>
             </div>
 
@@ -218,7 +218,6 @@
                 <div style="font-weight: bold; font-size: 1.05rem;">
                     <span class="c-color">C</span><span style="color: #aaa;">/</span><span class="d-color">D</span>
                 </div>
-                <!-- 給按鈕群組設定固定寬度，用以對齊下方的說明文字 -->
                 <div style="display: flex; gap: 8px; width: 64px;">
                     <button class="step-btn" onclick="stepCD(-1)">-</button>
                     <button class="step-btn" onclick="stepCD(1)">+</button>
@@ -482,10 +481,22 @@
                     historyStack = []; 
                     redoStack = []; 
                     showCup = false; showDisc = false; updateSegUI();
-                    resetView();
+                    
+                    // 修正：載入圖片時完全清空標記 (Clean Slate)，不再產生預設標尺
+                    let baseScale = Math.min(window.innerWidth / img.width, window.innerHeight / img.height) * 0.9;
+                    imgZoom = 1.0; mkrZoom = 1.0; allZoom = 1.0;
+                    transform.scale = baseScale;
+                    transform.x = window.innerWidth / 2 - (img.width / 2) * transform.scale;
+                    transform.y = window.innerHeight / 2 - (img.height / 2) * transform.scale;
+                    
+                    pts = {}; // 徹底清空座標點
+                    
+                    sliderImg.value = "1.00"; sliderMkr.value = "1.00"; sliderAll.value = "1.00";
+                    
                     setAIMode(false);
                     aiFindings = { hemorrhage: false, hemorrhage_x: 0, hemorrhage_y: 0 };
                     updateDashboard();
+                    draw();
                 }
                 img.src = event.target.result;
             }
@@ -660,6 +671,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function setCDRatio(ratioVal) {
+            if (Object.keys(pts).length === 0) return; // 若無標記則忽略
+
             if (!isStateSavedForCurrentAction) {
                 saveState();
                 isStateSavedForCurrentAction = true;
@@ -686,6 +699,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function onSliderCDInput(val) {
+            if (Object.keys(pts).length === 0) return; 
             if (!showCup || !showDisc) { showCup = true; showDisc = true; updateSegUI(); }
             setCDRatio(val);
         }
@@ -694,6 +708,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         sliderCD.addEventListener('touchstart', () => { isStateSavedForCurrentAction = false; }, {passive: true});
 
         function stepCD(direction) {
+            if (Object.keys(pts).length === 0) return; // 無標尺時按鈕無效
             isStateSavedForCurrentAction = false; 
             let current = parseFloat(sliderCD.value);
             let newVal = direction > 0 ? Math.floor(current * 10 + 1.001) / 10 : Math.ceil(current * 10 - 1.001) / 10;
@@ -706,7 +721,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         function updateDashboard() {
             let isExceeding = false;
             
-            if (showCup && showDisc && pts.d_v1) {
+            // 安全檢查：若 pts 還未建立，直接隱藏警告
+            if (Object.keys(pts).length === 0) {
+                exceedWarning.style.display = 'none';
+            } else if (showCup && showDisc && pts.d_v1) {
                 let discTop = Math.min(pts.d_v1.y, pts.d_v2.y);
                 let discBot = Math.max(pts.d_v1.y, pts.d_v2.y);
                 let cupTop = Math.min(pts.c_v1.y, pts.c_v2.y);
@@ -745,7 +763,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             if (aiFindings.hemorrhage) {
                 let clockHour = 11; 
-                if (aiFindings.hemorrhage_x && aiFindings.hemorrhage_x > 0) {
+                if (aiFindings.hemorrhage_x && aiFindings.hemorrhage_x > 0 && Object.keys(pts).length > 0) {
                     let imgX = aiFindings.hemorrhage_x * img.width;
                     let imgY = aiFindings.hemorrhage_y * img.height;
                     let hScreenX = transform.x + imgX * transform.scale;
@@ -777,6 +795,12 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function calculateRatio() {
+            if (Object.keys(pts).length === 0) {
+                document.getElementById('vRatio').innerText = "0.00";
+                document.getElementById('hRatio').innerText = "0.00";
+                return;
+            }
+
             let discV = Math.abs(pts.d_v1.y - pts.d_v2.y); let cupV = Math.abs(pts.c_v1.y - pts.c_v2.y);
             let discH = Math.abs(pts.d_h1.x - pts.d_h2.x); let cupH = Math.abs(pts.c_h1.x - pts.c_h2.x);
             let vRatio = (discV === 0) ? 0 : (cupV / discV); let hRatio = (discH === 0) ? 0 : (cupH / discH);
@@ -857,6 +881,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             } catch(e) { return null; }
         }
 
+        // 修正：將自動產生標記的功能獨立放在「預設標記」按鈕中
         function resetView() {
             if (Object.keys(pts).length > 0) saveState();
             let detected = detectBrightCenter(img);
@@ -897,6 +922,8 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             sliderImg.value = imgZoom.toFixed(2); 
             sliderMkr.value = mkrZoom.toFixed(2); 
             sliderAll.value = allZoom.toFixed(2);
+            
+            showCup = true; showDisc = true; updateSegUI();
             draw();
             setAIMode(false); 
         }
@@ -913,6 +940,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function getCenter() {
+            if (Object.keys(pts).length === 0) return { x: window.innerWidth/2, y: window.innerHeight/2 };
             let avgX = 0, avgY = 0;
             for (let key in pts) { avgX += pts[key].x; avgY += pts[key].y; }
             return { x: avgX / 8, y: avgY / 8 };
@@ -927,6 +955,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function applyZoomMkr(factor, cx, cy) {
+            if (Object.keys(pts).length === 0) return;
             for (let key in pts) {
                 pts[key].x = cx + (pts[key].x - cx) * factor;
                 pts[key].y = cy + (pts[key].y - cy) * factor;
@@ -1008,6 +1037,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function drawMarkersOverlay(context) {
+            if (Object.keys(pts).length === 0) return;
             if (!showDisc && !showCup) return; 
             context.save();
             
@@ -1106,15 +1136,41 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (caliperStart && caliperEnd) {
                 let dx = caliperEnd.x - caliperStart.x;
                 let dy = caliperEnd.y - caliperStart.y;
-                let len = Math.hypot(dx, dy);
+                let isHoriz = Math.abs(dx) > Math.abs(dy);
+                
+                let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
+                let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
+
+                let len = Math.hypot(drawEndX - caliperStart.x, drawEndY - caliperStart.y);
 
                 if (len > 15 && (showDisc || showCup)) {
-                    let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
                     let otherTarget = target === 'd' ? 'c' : 'd';
 
+                    // 修正 2：如果畫布是乾淨的，直接根據這第一筆畫「無中生有」生出對稱的十字框架
+                    if (Object.keys(pts).length === 0) {
+                        let cx = (caliperStart.x + drawEndX) / 2;
+                        let cy = (caliperStart.y + drawEndY) / 2;
+                        let r = len / 2;
+                        
+                        let cd = parseFloat(sliderCD.value) || 0.50;
+                        let cR = target === 'c' ? r : r * cd;
+                        let dR = target === 'd' ? r : (r / cd);
+                        
+                        // 給予最小限制避免除以0或過小
+                        if(cR < 10) cR = 10;
+                        if(dR < 20) dR = 20;
+
+                        pts = {
+                            d_v1: {x: cx, y: cy - dR, color: dColor}, d_v2: {x: cx, y: cy + dR, color: dColor},
+                            c_v1: {x: cx, y: cy - cR, color: cColor}, c_v2: {x: cx, y: cy + cR, color: cColor},
+                            d_h1: {x: cx - dR, y: cy, color: dColor}, d_h2: {x: cx + dR, y: cy, color: dColor},
+                            c_h1: {x: cx - cR, y: cy, color: cColor}, c_h2: {x: cx + cR, y: cy, color: cColor}
+                        };
+                    }
+
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
+                    let pt2 = {x: drawEndX, y: drawEndY};
 
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
@@ -1262,6 +1318,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
         }
 
         function getHitTarget(tx, ty, isTouch) {
+            if (Object.keys(pts).length === 0) return null;
             if (!showDisc && !showCup) return null; 
 
             let center = getCenter();
@@ -1337,7 +1394,10 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                     isDrawingCaliper = true;
                     caliperStart = {x: mouseX, y: mouseY};
                     caliperEnd = {x: mouseX, y: mouseY};
-                } else if (!showCup && !showDisc) {
+                } else if (!showCup && !showDisc && Object.keys(pts).length > 0) {
+                    isDraggingCanvas = true;
+                } else if (Object.keys(pts).length === 0) {
+                    // 如果沒有標記，也沒按快捷鍵，就單純平移畫布
                     isDraggingCanvas = true;
                 } else {
                     isDrawingCaliper = true;
@@ -1353,7 +1413,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             let mouseX = e.clientX; let mouseY = e.clientY;
             
             if (isDrawingCaliper) {
-                if (!isStateSavedForCurrentAction) { saveState(); isStateSavedForCurrentAction = true; }
+                if (!isStateSavedForCurrentAction && Object.keys(pts).length > 0) { saveState(); isStateSavedForCurrentAction = true; }
                 caliperEnd = {x: mouseX, y: mouseY};
                 draw();
             } else if (dragObj) {
@@ -1390,7 +1450,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             } else if (isDraggingCanvas) {
                 let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
                 transform.x += dx; transform.y += dy; 
-                for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                if (Object.keys(pts).length > 0) {
+                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                }
                 lastMouse = {x: mouseX, y: mouseY};
                 draw();
             }
@@ -1423,7 +1485,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         isDrawingCaliper = true;
                         caliperStart = {x: tx, y: ty};
                         caliperEnd = {x: tx, y: ty};
-                    } else if (!showCup && !showDisc) {
+                    } else if (!showCup && !showDisc && Object.keys(pts).length > 0) {
+                        isDraggingCanvas = true;
+                    } else if (Object.keys(pts).length === 0) {
                         isDraggingCanvas = true;
                     } else {
                         isDrawingCaliper = true;
@@ -1443,7 +1507,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (e.touches.length === 1 && lastMouse) {
                 let mouseX = e.touches[0].clientX; let mouseY = e.touches[0].clientY;
                 if (isDrawingCaliper) {
-                    if (!isStateSavedForCurrentAction) { saveState(); isStateSavedForCurrentAction = true; }
+                    if (!isStateSavedForCurrentAction && Object.keys(pts).length > 0) { saveState(); isStateSavedForCurrentAction = true; }
                     caliperEnd = {x: mouseX, y: mouseY};
                     draw();
                 } else if (dragObj) {
@@ -1480,7 +1544,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 } else if (isDraggingCanvas) {
                     let dx = mouseX - lastMouse.x; let dy = mouseY - lastMouse.y;
                     transform.x += dx; transform.y += dy; 
-                    for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    if (Object.keys(pts).length > 0) {
+                        for (let key in pts) { pts[key].x += dx; pts[key].y += dy; }
+                    }
                     lastMouse = { x: mouseX, y: mouseY }; draw();
                 }
             } else if (e.touches.length === 2) {
