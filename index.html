@@ -112,11 +112,10 @@
         .shortcut-row .s-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
         .shortcut-row .s-key { font-size: 0.68rem; color: #999; width: 64px; text-align: left; white-space: nowrap; letter-spacing: -0.3px; }
         
-        /* 讓文字列變成互動按鈕的專屬樣式 */
-        .clickable-row { cursor: pointer; background: rgba(76, 217, 100, 0.15); border: 1px solid rgba(76, 217, 100, 0.4); border-radius: 6px; padding: 4px 6px; margin: 2px -4px; transition: 0.2s; }
-        .clickable-row:hover { background: rgba(76, 217, 100, 0.3); }
+        /* 移除綠框，改為乾淨的純文字按鈕互動樣式 */
+        .clickable-row { cursor: pointer; transition: 0.2s; border-radius: 4px; }
+        .clickable-row:hover .s-title { color: #4cd964; text-decoration: underline; }
         .clickable-row:active { transform: scale(0.95); }
-        .clickable-row .s-title { color: #4cd964; }
 
         canvas { display: none; width: 100vw; height: 100vh; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
@@ -233,9 +232,9 @@
 
             <div class="shortcut-list">
                 <div class="shortcut-row"><span class="s-title">圖片</span><span class="s-key">滾輪+Shift</span></div>
-                <!-- 預設尺標被轉移到這裡，變成一個美觀的快捷點擊區塊 -->
-                <div class="shortcut-row clickable-row" onclick="generateDefaultMarkers()">
-                    <span class="s-title">➕預設尺標</span><span class="s-key">滾輪+Alt</span>
+                <!-- 改為純文字按鈕樣式，拿掉綠框與加號 -->
+                <div class="shortcut-row clickable-row" onclick="generateDefaultMarkers()" title="點擊生成預設尺標">
+                    <span class="s-title">尺標</span><span class="s-key">滾輪+Alt</span>
                 </div>
                 <div class="shortcut-row"><span class="s-title">同步</span><span class="s-key">滾輪</span></div>
                 <div class="shortcut-row"><span class="s-title">對稱</span><span class="s-key">🖱️+Alt</span></div>
@@ -317,7 +316,6 @@
             }
         });
 
-        // 轉換座標系用工具函數
         function toImgCoord(sx, sy) {
             return { x: (sx - transform.x) / transform.scale, y: (sy - transform.y) / transform.scale };
         }
@@ -402,7 +400,7 @@
             }
         }
 
-        function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key') || ''; }
+        function getSavedApiKey() { return localStorage.getItem('cdratio_gemini_api_key'] || ''; }
         function getSavedModelName() { return localStorage.getItem('cdratio_gemini_model') || 'gemini-1.5-flash'; }
 
         function updateLogoModelName() {
@@ -498,7 +496,6 @@
                     redoStack = []; 
                     showCup = false; showDisc = false; updateSegUI();
                     
-                    // 完全淨空的畫布，只進行自動置中放大
                     pts = {}; 
                     centerViewOnly();
                     
@@ -891,7 +888,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             } catch(e) { return null; }
         }
 
-        // 新增純視角置中功能 (不改變現有標記)
         function centerViewOnly() {
             let detected = detectBrightCenter(img);
             let discX = detected ? detected.x : img.width / 2;
@@ -913,18 +909,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             transform.y = window.innerHeight / 2 - discY * transform.scale;
         }
 
-        // 修改後的重置按鈕：會重新對準視神經盤，並讓畫布上的標線跟著視角平移
         function resetView() {
             if (Object.keys(pts).length > 0) {
                 saveState();
-                // 暫存圖片座標
                 let imgPts = {};
                 for(let k in pts) imgPts[k] = toImgCoord(pts[k].x, pts[k].y);
                 
-                // 重置視角
                 centerViewOnly();
                 
-                // 還原為新的螢幕座標
                 for(let k in pts) {
                     let sc = toScreenCoord(imgPts[k].x, imgPts[k].y);
                     pts[k].x = sc.x;
@@ -936,11 +928,9 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             draw();
         }
 
-        // 新增：獨立產生預設十字標線的按鈕功能
         function generateDefaultMarkers() {
             if (Object.keys(pts).length > 0) saveState();
             
-            // 產生前先重置視角對準亮點
             centerViewOnly(); 
             
             let cx = window.innerWidth / 2; let cy = window.innerHeight / 2;
@@ -1177,15 +1167,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                 if (len > 15 && (showDisc || showCup)) {
                     let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
-                    
-                    let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
-                    let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
 
-                    // 無中生有：如果是空畫布畫下的第一筆，自動補齊所有十字座標
+                    let pt1 = {x: caliperStart.x, y: caliperStart.y};
+                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
+
                     if (Object.keys(pts).length === 0) {
-                        let cx = (caliperStart.x + drawEndX) / 2;
-                        let cy = (caliperStart.y + drawEndY) / 2;
-                        let r = Math.abs(isHoriz ? (drawEndX - caliperStart.x)/2 : (drawEndY - caliperStart.y)/2);
+                        let cx = (caliperStart.x + pt2.x) / 2;
+                        let cy = (caliperStart.y + pt2.y) / 2;
+                        let r = Math.abs(isHoriz ? (pt2.x - caliperStart.x)/2 : (pt2.y - caliperStart.y)/2);
                         
                         let cd = parseFloat(sliderCD.value) || 0.50;
                         let cR = target === 'c' ? r : r * cd;
@@ -1201,11 +1190,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                             c_h1: {x: cx - cR, y: cy, color: cColor}, c_h2: {x: cx + cR, y: cy, color: cColor}
                         };
                     } else {
-                        // 已經有標記，則進行一般修改
-                        let otherTarget = target === 'd' ? 'c' : 'd';
-                        let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                        let pt2 = {x: drawEndX, y: drawEndY};
-
                         if (isHoriz) {
                             if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                             pts[target + '_h1'].x = pt1.x; pts[target + '_h1'].y = pt1.y;
@@ -1554,7 +1538,6 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         setAIMode(false); 
                     } else if (dragObj.type === 'point') {
                         let k = dragObj.key;
-                        
                         let dx = k.includes('_h') ? (mouseX - dragObj.pt.x) : 0;
                         let dy = k.includes('_v') ? (mouseY - dragObj.pt.y) : 0;
 
