@@ -1066,22 +1066,18 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             
             let center = getCenter();
             context.save();
-            // 修正 1：重新設計「絕對防跟丟」的雙層高對比黑白輪廓與實心十字圓心
             context.beginPath(); context.arc(center.x, center.y, 7, 0, Math.PI*2);
-            context.fillStyle = 'rgba(255, 255, 255, 0.4)'; // 半透明底
+            context.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
             context.fill();
             
-            // 外層粗黑灰框
             context.lineWidth = 3;
             context.strokeStyle = 'rgba(0, 0, 0, 0.7)';
             context.stroke();
             
-            // 內層細白框
             context.lineWidth = 1;
             context.strokeStyle = '#fff';
             context.stroke();
 
-            // 中心實心準星小黑點
             context.beginPath(); context.arc(center.x, center.y, 2, 0, Math.PI*2);
             context.fillStyle = 'rgba(0, 0, 0, 0.8)';
             context.fill();
@@ -1125,6 +1121,7 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             }
         }
 
+        // 修正 1：畫完線後，自動亮起 ALL 狀態 (包含 Cup 分支)
         function finishDrawingCaliper() {
             if (!isDrawingCaliper) return;
             isDrawingCaliper = false;
@@ -1132,19 +1129,14 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
             if (caliperStart && caliperEnd) {
                 let dx = caliperEnd.x - caliperStart.x;
                 let dy = caliperEnd.y - caliperStart.y;
-                let isHoriz = Math.abs(dx) > Math.abs(dy);
-                
-                let drawEndX = isHoriz ? caliperEnd.x : caliperStart.x;
-                let drawEndY = isHoriz ? caliperStart.y : caliperEnd.y;
-
-                let len = Math.hypot(drawEndX - caliperStart.x, drawEndY - caliperStart.y);
+                let len = Math.hypot(dx, dy);
 
                 if (len > 15 && (showDisc || showCup)) {
+                    let isHoriz = Math.abs(dx) > Math.abs(dy);
                     let target = (showCup && !showDisc) ? 'c' : 'd';
-                    let otherTarget = target === 'd' ? 'c' : 'd';
 
                     let pt1 = {x: caliperStart.x, y: caliperStart.y};
-                    let pt2 = {x: drawEndX, y: drawEndY};
+                    let pt2 = {x: caliperEnd.x, y: caliperEnd.y};
 
                     if (isHoriz) {
                         if (pt1.x > pt2.x) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
@@ -1152,45 +1144,27 @@ Return a valid JSON object in normalized coordinates (0.0 to 1.0) and findings u
                         pts[target + '_h2'].x = pt2.x; pts[target + '_h2'].y = pt2.y;
 
                         let newCx = (pt1.x + pt2.x) / 2;
-                        let newCy = pt1.y;
                         let oldCx = (pts[target + '_v1'].x + pts[target + '_v2'].x) / 2;
-                        let oldCy = (pts[target + '_v1'].y + pts[target + '_v2'].y) / 2;
                         let shiftX = newCx - oldCx;
-                        let shiftY = newCy - oldCy;
-                        
-                        pts[target + '_v1'].x += shiftX; pts[target + '_v1'].y += shiftY;
-                        pts[target + '_v2'].x += shiftX; pts[target + '_v2'].y += shiftY;
-                        
-                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
-                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
-                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
-                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
+                        pts[target + '_v1'].x += shiftX;
+                        pts[target + '_v2'].x += shiftX;
                     } else {
                         if (pt1.y > pt2.y) { let tmp = pt1; pt1 = pt2; pt2 = tmp; }
                         pts[target + '_v1'].x = pt1.x; pts[target + '_v1'].y = pt1.y;
                         pts[target + '_v2'].x = pt2.x; pts[target + '_v2'].y = pt2.y;
 
-                        let newCx = pt1.x;
                         let newCy = (pt1.y + pt2.y) / 2;
-                        let oldCx = (pts[target + '_h1'].x + pts[target + '_h2'].x) / 2;
                         let oldCy = (pts[target + '_h1'].y + pts[target + '_h2'].y) / 2;
-                        let shiftX = newCx - oldCx;
                         let shiftY = newCy - oldCy;
-                        
-                        pts[target + '_h1'].x += shiftX; pts[target + '_h1'].y += shiftY;
-                        pts[target + '_h2'].x += shiftX; pts[target + '_h2'].y += shiftY;
-
-                        pts[otherTarget + '_v1'].x += shiftX; pts[otherTarget + '_v1'].y += shiftY;
-                        pts[otherTarget + '_v2'].x += shiftX; pts[otherTarget + '_v2'].y += shiftY;
-                        pts[otherTarget + '_h1'].x += shiftX; pts[otherTarget + '_h1'].y += shiftY;
-                        pts[otherTarget + '_h2'].x += shiftX; pts[otherTarget + '_h2'].y += shiftY;
+                        pts[target + '_h1'].y += shiftY;
+                        pts[target + '_h2'].y += shiftY;
                     }
 
                     if (target === 'd') {
-                        // 畫完 Disc 會因為維持 C/D Ratio 連動改變 Cup 點，這裡強制切換回 ALL 顯示
                         showCup = true; showDisc = true; updateSegUI();
                         setCDRatio(sliderCD.value);
                     } else {
+                        showCup = true; showDisc = true; updateSegUI();
                         calculateRatio();
                     }
                     setAIMode(false);
